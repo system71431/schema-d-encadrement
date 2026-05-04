@@ -1,6 +1,7 @@
-# Dépendances locales (utilisées seulement pour la vérification de syntaxe)
+# Dépendances et artefacts de build
 node_modules/
 package-lock.json
+project/dist/
 
 # Brouillons et tests
 project/scraps/

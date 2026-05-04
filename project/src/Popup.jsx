@@ -1,6 +1,11 @@
-function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
+import React from "react";
+
+function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
   if (!payload) return null;
   const { x, y, kind, id } = payload;
+  const NODES = nodes || [];
+  const LINKS = links || [];
+  const getNodeById = (nid) => NODES.find((n) => n.id === nid);
 
   let body = null;
   let title = "";
@@ -9,14 +14,14 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
   let _isWide = false;
 
   if (kind === "node") {
-    const node = window.getNodeById(id);
+    const node = getNodeById(id);
     if (!node) return null;
     _isNamed = node.kind === "role" || node.kind === "group" || node.kind === "resource";
     // Bascule en mode "wide" (popup centré, multi-colonnes, sans scroll)
     // dès que le nœud a un nombre conséquent de tâches.
     if (_isNamed) {
       let n = 0;
-      (window.LINKS || []).forEach((l) => {
+      (LINKS || []).forEach((l) => {
         if (l.kind !== "encadrement") return;
         if (l.from !== node.id && l.to !== node.id) return;
         const ts = l.tasks && l.tasks[node.id];
@@ -33,11 +38,11 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
         default: return k;
       }
     })(node.kind);
-    const incoming = window.LINKS.filter((l) => l.to === id);
-    const outgoing = window.LINKS.filter((l) => l.from === id);
-    const getLbl = (nid) => { const n = window.getNodeById(nid); return n ? n.label : nid; };
+    const incoming = LINKS.filter((l) => l.to === id);
+    const outgoing = LINKS.filter((l) => l.from === id);
+    const getLbl = (nid) => { const n = getNodeById(nid); return n ? n.label : nid; };
     const groupMates = node.groupId
-      ? (window.NODES || []).filter((n) => n.groupId === node.groupId && n.id !== node.id)
+      ? (NODES || []).filter((n) => n.groupId === node.groupId && n.id !== node.id)
       : [];
     body = (
       <>
@@ -73,7 +78,7 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
             if (existing) existing.tasks = existing.tasks.concat(tasks);
             else groups.set(key, { target, direction, tasks: tasks.slice() });
           };
-          (window.LINKS || []).forEach((l) => {
+          (LINKS || []).forEach((l) => {
             if (l.kind !== "encadrement") return;
             if (l.from !== node.id && l.to !== node.id) return;
             const ts = l.tasks && l.tasks[node.id];
@@ -91,11 +96,11 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
           // qui ont la même tâche, et on affiche un tag pour chacun.
           const findSharedRoles = (label) => {
             const ids = new Set();
-            (window.NODES || []).forEach((n) => {
+            (NODES || []).forEach((n) => {
               if (n.id === node.id) return;
               if ((n.tasks || []).some((t) => t && t.label === label)) ids.add(n.id);
             });
-            (window.LINKS || []).forEach((l) => {
+            (LINKS || []).forEach((l) => {
               if (!l.tasks) return;
               Object.keys(l.tasks).forEach((roleId) => {
                 if (roleId === node.id) return;
@@ -129,7 +134,7 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
                   colonnes ; les tâches qui suivent reprennent en flow. */}
               <ul className="pop__tasks-list pop__tasks-list--unified">
                 {Array.from(groups.values()).map((group, gIdx) => {
-                  const other = window.getNodeById(group.target);
+                  const other = getNodeById(group.target);
                   return (
                     <React.Fragment key={gIdx}>
                       <li className="pop__tasks-subtitle">
@@ -144,7 +149,7 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
                         const sharedIds = new Set(findSharedRoles(task.label));
                         if (task.sharedWith) sharedIds.add(task.sharedWith);
                         const sharedNodes = Array.from(sharedIds)
-                          .map((sid) => window.getNodeById(sid))
+                          .map((sid) => getNodeById(sid))
                           .filter(Boolean);
                         return (
                           <li key={gIdx + '-' + i} className="pop__task">
@@ -183,15 +188,15 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
       </>
     );
   } else if (kind === "link") {
-    const link = window.LINKS.find((l) => l.id === id);
+    const link = LINKS.find((l) => l.id === id);
     if (!link) return null;
-    const from = window.getNodeById(link.from);
-    const to = window.getNodeById(link.to);
+    const from = getNodeById(link.from);
+    const to = getNodeById(link.to);
     const fromGroup = (from && from.groupId)
-      ? (window.NODES || []).filter((n) => n.groupId === from.groupId)
+      ? (NODES || []).filter((n) => n.groupId === from.groupId)
       : (from ? [from] : []);
     const toGroup = (to && to.groupId)
-      ? (window.NODES || []).filter((n) => n.groupId === to.groupId)
+      ? (NODES || []).filter((n) => n.groupId === to.groupId)
       : (to ? [to] : []);
     eyebrow = link.kind === "encadrement" ? "Relation d'encadrement" : "Collaboration";
     title = link.label;
@@ -259,4 +264,4 @@ function Popup({ payload, onClose, onSelectNode, onSelectLink }) {
     </div>
   );
 }
-window.Popup = Popup;
+export default Popup;

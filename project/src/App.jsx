@@ -1,4 +1,48 @@
-const { useState, useEffect, useMemo, useCallback } = React;
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import html2canvas from "html2canvas";
+import Schema from "./Schema.jsx";
+import Popup from "./Popup.jsx";
+import EditorPanel from "./EditorPanel.jsx";
+import {
+  NODES as SEED_NODES,
+  LINKS as SEED_LINKS,
+  HEADER as SEED_HEADER,
+  DATA_VERSION,
+} from "./data.js";
+import logoUrl from "./logo-scoutisme-neuchatelois.png";
+import "./styles.css";
+
+// Lit l'instantané JSON éventuellement embarqué dans
+// <script id="schema-data" type="application/json">. Quand le bloc est vide
+// (cas du bundle de base), on retombe sur les seeds importés depuis data.js.
+// La feature « Générer page » écrit ses données ici pour produire un HTML
+// autonome qui démarre sur l'état exporté.
+function loadInitialData() {
+  try {
+    const el = document.getElementById("schema-data");
+    if (!el) return null;
+    const raw = (el.textContent || "").trim();
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.links)) return null;
+    return {
+      nodes: parsed.nodes,
+      links: parsed.links,
+      header: parsed.header || { title: "Schéma d'encadrement", subtitle: "" },
+      mode: el.getAttribute("data-mode") || "editor",
+    };
+  } catch (_) {
+    return null;
+  }
+}
+const INITIAL_FROM_TAG = loadInitialData();
+const INITIAL_NODES = INITIAL_FROM_TAG ? INITIAL_FROM_TAG.nodes : SEED_NODES;
+const INITIAL_LINKS = INITIAL_FROM_TAG ? INITIAL_FROM_TAG.links : SEED_LINKS;
+const INITIAL_HEADER = INITIAL_FROM_TAG ? INITIAL_FROM_TAG.header : SEED_HEADER;
+// Mode viewer : édition désactivée (boutons cachés). Utilisé par les pages
+// générées pour figer l'export en lecture seule.
+const VIEWER_ONLY = !!(INITIAL_FROM_TAG && INITIAL_FROM_TAG.mode === "viewer");
+
 const HIST_LIMIT = 50;
 // Brouillon : auto-save dans localStorage pendant l'édition, pour ne pas
 // perdre les modifs au reload. La cohérence avec `data.js` est garantie par
@@ -68,182 +112,32 @@ function Legend() {
   );
 }
 
-// Génère un HTML autonome ne contenant que le viewer (pas l'éditeur), avec
-// les données courantes baked-in et le CSS local inliné.
+// Génère un HTML autonome qui démarre sur les données courantes. Stratégie :
+// le bundle Vite produit déjà un fichier auto-suffisant (CSS + JS inlinés via
+// vite-plugin-singlefile), donc on clone le DOM courant et on remplace le
+// contenu de <script id="schema-data"> par l'instantané sérialisé. La page
+// générée se charge en mode viewer (data-mode="viewer" → édition désactivée).
 function buildViewerHTML(viewNodes, viewLinks, viewHeader) {
-  let inlineCss = "";
-  // 1) Lire les <style> inline (toujours accessibles, même file://)
-  for (const styleEl of document.querySelectorAll("style")) {
-    inlineCss += (styleEl.textContent || "") + "\n";
+  const doc = document.documentElement.cloneNode(true);
+  const dataEl = doc.querySelector("#schema-data");
+  if (!dataEl) {
+    throw new Error("Bloc <script id=\"schema-data\"> introuvable dans la page courante.");
   }
-  // 2) Lire les feuilles de style via cssRules (peut échouer sur file:// avec <link>)
-  for (const sheet of document.styleSheets) {
-    try {
-      if (sheet.ownerNode && sheet.ownerNode.tagName === "STYLE") continue; // déjà extrait
-      if (sheet.href && sheet.href.indexOf("http") === 0 && sheet.href.indexOf(window.location.origin) !== 0) continue;
-      const rules = sheet.cssRules;
-      if (!rules) continue;
-      for (const rule of rules) inlineCss += rule.cssText + "\n";
-    } catch (e) { /* cross-origin / bloqué : on saute */ }
-  }
-  // 3) Fallback : XHR synchrone vers styles.css (souvent OK sur file://, sauf Chrome récent)
-  if (inlineCss.replace(/\s/g, "").length < 100) {
-    for (const link of document.querySelectorAll('link[rel="stylesheet"]')) {
-      const href = link.getAttribute("href");
-      if (!href || href.indexOf("http") === 0) continue;
-      try {
-        const xhr = new XMLHttpRequest();
-        xhr.open("GET", href, false);
-        xhr.send(null);
-        if (xhr.status === 200 || xhr.status === 0) inlineCss += "\n" + xhr.responseText + "\n";
-      } catch (e) {}
-    }
-  }
-  if (inlineCss.replace(/\s/g, "").length < 100) {
-    if (!confirm("Impossible d'extraire le CSS automatiquement (sécurité du navigateur sur file://). \n\nLe HTML sera généré avec un lien vers \"styles.css\" — il faudra mettre styles.css à côté du fichier généré.\n\nContinuer ?")) {
-      throw new Error("Génération annulée par l'utilisateur");
-    }
-  }
-  let schemaSrc = "", popupSrc = "";
-  for (const s of document.querySelectorAll('script[type="text/babel"]')) {
-    const t = s.textContent || "";
-    // Le script App contient les littéraux "function Schema(" / "window.Schema = Schema"
-    // dans son propre code (cette fonction !) → on l'écarte d'abord. Il est le seul
-    // à appeler ReactDOM.createRoot.
-    if (t.indexOf("ReactDOM.createRoot") !== -1) continue;
-    if (!schemaSrc && t.indexOf("window.Schema = Schema;") !== -1) schemaSrc = t;
-    else if (!popupSrc && t.indexOf("window.Popup = Popup;") !== -1) popupSrc = t;
-  }
-  if (!schemaSrc || !popupSrc) {
-    throw new Error("Impossible d'extraire le code Schema/Popup du document. (schema: " + schemaSrc.length + " car., popup: " + popupSrc.length + " car.)");
-  }
-  const viewerApp = [
-    'const { useState, useEffect } = React;',
-    '',
-    'function App() {',
-    '  const [filter, setFilter] = useState("all");',
-    '  const [selection, setSelection] = useState(null);',
-    '  const [hover, setHover] = useState(null);',
-    '  const [popupAt, setPopupAt] = useState(null);',
-    '',
-    '  useEffect(() => {',
-    '    const onKey = (e) => {',
-    '      if (e.key === "Escape") { setSelection(null); setPopupAt(null); }',
-    '    };',
-    '    window.addEventListener("keydown", onKey);',
-    '    return () => window.removeEventListener("keydown", onKey);',
-    '  }, []);',
-    '',
-    '  const pickNode = (id, ev) => {',
-    '    const x = (ev && ev.clientX != null) ? ev.clientX : window.innerWidth / 2;',
-    '    const y = (ev && ev.clientY != null) ? ev.clientY : window.innerHeight / 2;',
-    '    setSelection({ type: "node", id });',
-    '    setPopupAt({ x: x, y: y, kind: "node", id: id });',
-    '  };',
-    '  const pickLink = (id, ev) => {',
-    '    // Pas de popup pour les liens — juste toggle du surlignage.',
-    '    setPopupAt(null);',
-    '    setSelection((prev) => (prev && prev.type === "link" && prev.id === id) ? null : { type: "link", id: id });',
-    '  };',
-    '  const closePopup = () => { setSelection(null); setPopupAt(null); };',
-    '',
-    '  return (',
-    '    <div className="app-fs">',
-    '      <header className="toolbar">',
-    '        <h1 className="toolbar__title">',
-    '          <span className="toolbar__title-mark">{(window.HEADER && window.HEADER.title) || "Schéma d\'encadrement"}</span>',
-    '          {(window.HEADER && window.HEADER.subtitle) ? <em>{window.HEADER.subtitle}</em> : null}',
-    '        </h1>',
-    '        <div className="toolbar__filters" role="tablist">',
-    '          <button className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>Tout</button>',
-    '          <button className={filter === "encadrement" ? "is-active" : ""} onClick={() => setFilter("encadrement")}>Encadrement</button>',
-    '          <button className={filter === "collaboration" ? "is-active" : ""} onClick={() => setFilter("collaboration")}>Collaboration</button>',
-    '        </div>',
-    '      </header>',
-    '      <window.Schema',
-    '        nodes={window.NODES} links={window.LINKS}',
-    '        filter={filter} selection={selection} hover={hover} setHover={setHover}',
-    '        onPickNode={pickNode} onPickLink={pickLink} onBlankClick={closePopup}',
-    '        editMode={false}',
-    '      />',
-    '      <div className="legend">',
-    '        <div className="legend__item">',
-    '          <svg width="48" height="14" viewBox="0 0 48 14">',
-    '            <line x1="2" y1="7" x2="38" y2="7" className="legend-line legend-line--enc" vectorEffect="non-scaling-stroke"/>',
-    '            <path d="M 36 2 L 44 7 L 36 12 z" className="legend-arrow legend-arrow--enc"/>',
-    '          </svg>',
-    '          <span><strong>Encadrement</strong> — relation hiérarchique</span>',
-    '        </div>',
-    '        <div className="legend__item">',
-    '          <svg width="48" height="14" viewBox="0 0 48 14">',
-    '            <path d="M 12 2 L 4 7 L 12 12 z" className="legend-arrow legend-arrow--coll"/>',
-    '            <line x1="10" y1="7" x2="38" y2="7" className="legend-line legend-line--coll" vectorEffect="non-scaling-stroke"/>',
-    '            <path d="M 36 2 L 44 7 L 36 12 z" className="legend-arrow legend-arrow--coll"/>',
-    '          </svg>',
-    '          <span><strong>Collaboration</strong> — échange dans les deux sens</span>',
-    '        </div>',
-    '      </div>',
-    '      <div className="hint"><span>Cliquez un rôle ou un lien</span><kbd>Esc</kbd></div>',
-    '      <window.Popup',
-    '        payload={popupAt} onClose={closePopup}',
-    '        onSelectNode={(id) => {',
-    '          const el = document.querySelector(\'.node[data-id="\' + id + \'"]\');',
-    '          if (el) {',
-    '            const r = el.getBoundingClientRect();',
-    '            setSelection({ type: "node", id: id });',
-    '            setPopupAt({ x: r.left + r.width / 2, y: r.top + r.height / 2, kind: "node", id: id });',
-    '          } else {',
-    '            setSelection({ type: "node", id: id });',
-    '            setPopupAt({ ...popupAt, kind: "node", id: id });',
-    '          }',
-    '        }}',
-    '        onSelectLink={(id) => {',
-    '          setSelection({ type: "link", id: id });',
-    '          setPopupAt({ ...popupAt, kind: "link", id: id });',
-    '        }}',
-    '      />',
-    '    </div>',
-    '  );',
-    '}',
-    '',
-    'const root = ReactDOM.createRoot(document.getElementById("root"));',
-    'root.render(<App />);',
-  ].join("\n");
-  const dataScript = "window.NODES = " + JSON.stringify(viewNodes, null, 2) + ";\nwindow.LINKS = " + JSON.stringify(viewLinks, null, 2) + ";\nwindow.HEADER = " + JSON.stringify(viewHeader || { title: "Schéma d'encadrement", subtitle: "" }) + ";";
-  return [
-    '<!doctype html>',
-    '<html lang="fr">',
-    '<head>',
-    '<meta charset="utf-8">',
-    '<title>Schéma d\'encadrement — Groupe scout</title>',
-    '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">',
-    '<link rel="preconnect" href="https://fonts.googleapis.com">',
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>',
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Kalam:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">',
-    (inlineCss.replace(/\s/g, "").length < 100 ? '<link rel="stylesheet" href="styles.css">' : ''),
-    '<style>',
-    inlineCss,
-    '</style>',
-    '</head>',
-    '<body>',
-    '<div id="root"></div>',
-    '<script src="https://unpkg.com/react@18.3.1/umd/react.development.js"><\/script>',
-    '<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"><\/script>',
-    '<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"><\/script>',
-    '<script>' + dataScript + '<\/script>',
-    '<script type="text/babel">' + schemaSrc + '<\/script>',
-    '<script type="text/babel">' + popupSrc + '<\/script>',
-    '<script type="text/babel">' + viewerApp + '<\/script>',
-    '</body>',
-    '</html>',
-  ].join("\n");
+  const payload = {
+    nodes: viewNodes,
+    links: viewLinks,
+    header: viewHeader || { title: "Schéma d'encadrement", subtitle: "" },
+  };
+  dataEl.textContent = JSON.stringify(payload);
+  dataEl.setAttribute("data-mode", "viewer");
+  return "<!doctype html>\n" + doc.outerHTML;
 }
 
 function App() {
   const seed = useMemo(() => ({
-    nodes: JSON.parse(JSON.stringify(window.NODES)),
-    links: JSON.parse(JSON.stringify(window.LINKS)),
-    header: JSON.parse(JSON.stringify(window.HEADER || { title: "Schéma d'encadrement", subtitle: "du groupe scout — qui encadre qui ?" })),
+    nodes: JSON.parse(JSON.stringify(INITIAL_NODES)),
+    links: JSON.parse(JSON.stringify(INITIAL_LINKS)),
+    header: JSON.parse(JSON.stringify(INITIAL_HEADER || { title: "Schéma d'encadrement", subtitle: "du groupe scout — qui encadre qui ?" })),
   }), []);
 
   // Initialisation : si un brouillon localStorage existe ET correspond à la
@@ -255,7 +149,7 @@ function App() {
       if (raw) {
         const draft = JSON.parse(raw);
         if (draft && Array.isArray(draft.nodes) && Array.isArray(draft.links)) {
-          if ((draft.dataVersion || null) === (window.DATA_VERSION || null)) {
+          if ((draft.dataVersion || null) === (DATA_VERSION || null)) {
             return {
               nodes: draft.nodes,
               links: draft.links,
@@ -323,11 +217,6 @@ function App() {
   const canUndo = history.undo.length > 0;
   const canRedo = history.redo.length > 0;
 
-  // Garde window.NODES / window.LINKS synchronisés avec l'état React,
-  // pour que le Popup et tout code qui lit `window.*` voient la dernière version.
-  useEffect(() => { window.NODES = nodes; }, [nodes]);
-  useEffect(() => { window.LINKS = links; }, [links]);
-
   // Auto-save brouillon : à chaque modification de nodes/links/header, on
   // écrit dans localStorage. Inclut DATA_VERSION pour pouvoir détecter les
   // brouillons obsolètes (= antérieurs à une mise à jour de data.js).
@@ -336,7 +225,7 @@ function App() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({
         nodes, links, header,
         savedAt: Date.now(),
-        dataVersion: window.DATA_VERSION || null,
+        dataVersion: DATA_VERSION || null,
       }));
     } catch (_) {}
   }, [nodes, links, header]);
@@ -583,14 +472,10 @@ function App() {
   // transformé) parce que html2canvas gère mal les transformations CSS.
   // Le viewport contient déjà tout ce qui est rendu, à la résolution écran.
   const onExportPNG = async () => {
-    if (typeof window.html2canvas !== "function") {
-      alert("html2canvas n'est pas chargé (vérifier la connexion réseau).");
-      return;
-    }
     const target = document.querySelector(".schema__viewport");
     if (!target) { alert("Schéma introuvable."); return; }
     try {
-      const canvas = await window.html2canvas(target, {
+      const canvas = await html2canvas(target, {
         backgroundColor: getComputedStyle(document.body).getPropertyValue("background-color") || "#fbf6ea",
         scale: 2,
         useCORS: true,
@@ -630,15 +515,15 @@ function App() {
           title={expanded ? "Vue normale" : "Vue agrandie (cacher légende et conseils)"}>
           ⤢
         </button>
-        {!editMode ? (
+        {!editMode && !VIEWER_ONLY ? (
           <button className="toolbar__edit" onClick={enterEdit} title="Activer le mode édition">✎ Éditer</button>
         ) : null}
         <a href="https://scoutisme-neuchatelois.ch" target="_blank" rel="noopener" className="brand-logo" aria-label="Scoutisme Neuchâtelois">
-          <img src="logo-scoutisme-neuchatelois.png" alt="Scoutisme Neuchâtelois" />
+          <img src={logoUrl} alt="Scoutisme Neuchâtelois" />
         </a>
       </header>
 
-      <window.Schema
+      <Schema
         nodes={nodes}
         links={links}
         filter={filter}
@@ -667,8 +552,10 @@ function App() {
         </div>
       ) : null}
 
-      <window.Popup
+      <Popup
         payload={editMode ? null : popupAt}
+        nodes={nodes}
+        links={links}
         onClose={closePopup}
         onSelectNode={(id) => {
           const el = document.querySelector(`.node[data-id="${id}"]`);
@@ -687,7 +574,7 @@ function App() {
         }}
       />
 
-      <window.EditorPanel
+      <EditorPanel
         editMode={editMode}
         editing={editing}
         nodes={nodes}
@@ -721,5 +608,4 @@ function App() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App />);
+export default App;
