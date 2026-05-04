@@ -1,4 +1,4 @@
-const NODES = [
+export const NODES = [
   {
     "id": "n-1777134870414",
     "label": "Faitières",
@@ -510,7 +510,7 @@ const NODES = [
     "groupId": "g-1777153622816"
   }
 ];
-const LINKS = [
+export const LINKS = [
   {
     "id": "l-1777148774902",
     "from": "n-1777135318806",
@@ -661,10 +661,8 @@ const LINKS = [
     }
   }
 ];
-window.NODES = NODES;
-window.LINKS = LINKS;
-window.HEADER = {
+export const HEADER = {
   title: "Schéma d'encadrement",
   subtitle: "du groupe scout — qui encadre qui ?"
 };
-window.DATA_VERSION = "2026-05-01T00:00:00";
+export const DATA_VERSION = "2026-05-01T00:00:00";

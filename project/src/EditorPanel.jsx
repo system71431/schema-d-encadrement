@@ -1,3 +1,5 @@
+import React from "react";
+
 const PALETTE = [
   { name: "Jaune",  value: "#f5c443" },
   { name: "Rouge",  value: "#e54b3f" },
@@ -646,4 +648,4 @@ function EditorPanel(props) {
   );
 }
 
-window.EditorPanel = EditorPanel;
+export default EditorPanel;

@@ -1,8 +1,5 @@
-const { useMemo: _useMemo, useRef: _useRef, useState: _useState, useEffect: _useEffect, useCallback: _useCallback } = React;
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 
-function getNodeById(id) {
-  return (window.NODES || []).find((n) => n.id === id);
-}
 function findById(arr, id) {
   return arr.find((n) => n.id === id);
 }
@@ -76,8 +73,8 @@ function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
 }
 
 function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSource, onClick, onHover, onLeave, onDragStart, registerSize }) {
-  const ref = _useRef(null);
-  _useEffect(() => {
+  const ref = useRef(null);
+  useEffect(() => {
     if (!ref.current) return;
     const parent = ref.current.parentElement;
     if (!parent) return;
@@ -219,11 +216,11 @@ function Arrowhead({ x, y, angle, kind, dimmed, highlighted }) {
 }
 
 function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, onPickLink, onBlankClick, editMode, onNodeMove, linkDrawing, editing, onLinkAnchorChange, selectedIds, onLinkLabelMove, onPushHistory }) {
-  const [sizes, setSizes] = _useState({});
-  const dragMovedRef = _useRef(false);
-  const schemaRef = _useRef(null);
-  const [canvasPx, setCanvasPx] = _useState({ w: 1, h: 1 });
-  _useEffect(() => {
+  const [sizes, setSizes] = useState({});
+  const dragMovedRef = useRef(false);
+  const schemaRef = useRef(null);
+  const [canvasPx, setCanvasPx] = useState({ w: 1, h: 1 });
+  useEffect(() => {
     const el = schemaRef.current;
     if (!el) return;
     const update = () => {
@@ -239,14 +236,14 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   // canvas). Évite la boucle de re-render quand ResizeObserver remonte des
   // micro-variations sub-pixel après un layout.
   const SIZE_CHANGE_EPSILON = 0.1;
-  const registerSize = _useCallback((id, s) => setSizes((prev) => {
+  const registerSize = useCallback((id, s) => setSizes((prev) => {
     const cur = prev[id];
     if (cur && Math.abs(cur.w - s.w) < SIZE_CHANGE_EPSILON && Math.abs(cur.h - s.h) < SIZE_CHANGE_EPSILON) return prev;
     return { ...prev, [id]: s };
   }), []);
 
   const focused = !editMode ? (selection || hover) : null;
-  const focusInfo = _useMemo(() => {
+  const focusInfo = useMemo(() => {
     if (!focused) return null;
     const groupOf = (id) => {
       const n = nodes.find((x) => x.id === id);
@@ -545,5 +542,4 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   );
 }
 
-window.Schema = Schema;
-window.getNodeById = getNodeById;
+export default Schema;
