@@ -1,0 +1,26 @@
+# Dépendances locales (utilisées seulement pour la vérification de syntaxe)
+node_modules/
+package-lock.json
+
+# Brouillons et tests
+project/scraps/
+project/uploads/
+project/Schema d'encadrement (standalone-src) - essai.html
+
+# Artefacts Python
+__pycache__/
+*.pyc
+
+# Fichiers OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Configuration Claude Code locale (peut être commitée si vous voulez la
+# partager — sinon la laisser ignorée)
+.claude/
