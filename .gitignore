@@ -1,6 +1,5 @@
 # Dépendances et artefacts de build
 node_modules/
-package-lock.json
 project/dist/
 
 # Brouillons et tests
