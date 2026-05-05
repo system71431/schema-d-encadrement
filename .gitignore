@@ -1,6 +1,9 @@
 # Dépendances et artefacts de build
 node_modules/
 project/dist/
+project/test-results/
+project/playwright-report/
+project/blob-report/
 
 # Brouillons et tests
 project/scraps/

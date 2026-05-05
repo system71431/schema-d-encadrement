@@ -252,7 +252,13 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
   const popStyle = _isWide ? {} : { left, top, width: POPUP_W };
 
   return (
-    <div className={popClass} style={popStyle} onClick={(e) => e.stopPropagation()}>
+    <>
+      {/* Backdrop transparent : sur mobile (bottom-sheet) il capture les
+          taps en dehors du sheet pour le fermer. Sur desktop, il est
+          masqué via CSS — le popup flottant reste discret au-dessus du
+          schéma sans assombrir tout l'écran. */}
+      <div className="pop-backdrop" onClick={onClose} aria-hidden="true" />
+      <div className={popClass} style={popStyle} onClick={(e) => e.stopPropagation()}>
       <div className="pop__head">
         <div className={"pop__eyebrow" + (_isNamed ? " pop__eyebrow--name" : "")}>{eyebrow}</div>
         <button className="pop__close" onClick={onClose} aria-label="Fermer">
@@ -262,6 +268,7 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
       {title ? <h2 className="pop__title">{title}</h2> : null}
       {body}
     </div>
+    </>
   );
 }
 export default Popup;
