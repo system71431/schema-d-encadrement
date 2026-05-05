@@ -844,6 +844,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .app-fs.is-expanded .toolbar__expand { background: var(--blue); color: var(--paper-1); }
 
+/* Pastille SHA du build : injectée par vite.config.js. Permet de vérifier
+   en un coup d'œil quelle version est en train de tourner (utile sur la
+   GitHub Page une fois déployée). */
+.toolbar__version {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 3px 8px;
+  border: 1px dashed var(--ink-3);
+  border-radius: 999px;
+  opacity: 0.55;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  white-space: nowrap;
+  align-self: center;
+}
+.toolbar__version:hover {
+  opacity: 1;
+  background: var(--ink);
+  color: var(--paper-1);
+  border-color: var(--ink);
+}
+
 @media (max-width: 1000px) {
   /* Dès qu'on n'a plus la place pour la toolbar complète (titre + filtres
      + expand + édit + logo), on masque le logo et on réduit le titre.

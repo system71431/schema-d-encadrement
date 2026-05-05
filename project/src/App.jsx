@@ -518,6 +518,16 @@ function App() {
         {!editMode && !VIEWER_ONLY ? (
           <button className="toolbar__edit" onClick={enterEdit} title="Activer le mode édition">✎ Éditer</button>
         ) : null}
+        {__COMMIT_SHA__ ? (
+          <a className="toolbar__version"
+            href={`https://github.com/system71431/schema-d-encadrement/commit/${__COMMIT_SHA__}`}
+            target="_blank" rel="noopener"
+            title={`Voir le commit ${__COMMIT_SHA__} sur GitHub`}>
+            {__COMMIT_SHORT__}
+          </a>
+        ) : (
+          <span className="toolbar__version" title="Build hors d'un dépôt git">{__COMMIT_SHORT__}</span>
+        )}
         <a href="https://scoutisme-neuchatelois.ch" target="_blank" rel="noopener" className="brand-logo" aria-label="Scoutisme Neuchâtelois">
           <img src={logoUrl} alt="Scoutisme Neuchâtelois" />
         </a>
