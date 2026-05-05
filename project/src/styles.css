@@ -192,18 +192,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 600px) {
   .schema__reset-zoom { bottom: 12px; right: 12px; padding: 8px 12px; font-size: 14px; }
 }
-/* En orientation portrait (typiquement smartphone), le ratio écran ne
-   correspond pas à celui du canvas (3:2). Plutôt que de laisser des
-   marges blanches autour du fit homothétique, on contraint la zone du
-   schéma à son aspect-ratio natif : le canvas remplit alors *exactement*
-   sa zone, sans déformation. Le reste de l'écran (sous le schéma)
-   accueille la légende et reste un fond papier mouchté esthétique. */
+/* En portrait, on laisse le schéma occuper toute la hauteur disponible.
+   Le design 1200×800 fitté homothétiquement aura des marges verticales
+   (le ratio 3:2 ne remplit pas un écran 9:16), mais l'utilisateur peut
+   pinch-zoomer pour lire les détails. Mieux que de squeezer le schéma
+   en bande étroite et laisser la moitié inférieure de l'écran vide. */
 @media (orientation: portrait) {
-  .schema {
-    aspect-ratio: 3 / 2;
-    bottom: auto;
-    min-height: 0;
-  }
+  .schema { min-height: 0; }
 }
 .schema__svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 .schema__svg g.link { pointer-events: auto; cursor: pointer; }
@@ -899,10 +894,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 @media (max-width: 600px) {
   /* Smartphones (portrait) — la toolbar est trop étroite pour faire tenir
-     filtres + boutons + logo : on masque le logo et le bouton « Éditer »
-     (l'édition reste accessible en élargissant la fenêtre). */
-  .toolbar { top: 10px; left: 10px; right: 10px; gap: 8px; }
-  .toolbar__title { font-size: 28px; line-height: 1; flex: 0 1 auto; }
+     filtres + boutons + logo sur une ligne. On wrap : titre seul ligne 1,
+     filtres + boutons ligne 2. Le logo et le bouton « Éditer » restent
+     masqués (l'édition reste accessible en élargissant la fenêtre). */
+  .toolbar { top: 10px; left: 10px; right: 10px; gap: 8px; flex-wrap: wrap; }
+  .toolbar__title { font-size: 28px; line-height: 1; flex: 1 0 100%; }
   .toolbar__title em { display: none; }
   .toolbar__filters { padding: 3px; gap: 4px; transform: rotate(-0.4deg); }
   .toolbar__filters button { font-size: 12px; padding: 3px 8px; }

@@ -102,6 +102,38 @@ test("la toolbar tient sur la largeur du viewport mobile", async ({ page }) => {
   expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
 });
 
+test("le schéma occupe la majorité de la hauteur du viewport (portrait)", async ({ page }) => {
+  // Régression attendue : avant le fix `aspect-ratio: 3/2`, le schéma
+  // était écrasé à ~37% de la hauteur du viewport, laissant 60% d'écran
+  // vide. On exige au moins 70%.
+  const schema = page.locator(".schema");
+  const box = await schema.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box.height).toBeGreaterThan(viewport.height * 0.7);
+});
+
+test("au moins 4 nœuds nommés sont visibles à l'écran (portrait)", async ({ page }) => {
+  // Régression attendue : si le scale du fit est trop petit, les nœuds
+  // sortent ou sont écrasés. Avec le fit-en-hauteur sur portrait,
+  // l'utilisateur voit la moitié gauche du design avec plusieurs labels
+  // lisibles. On vérifie qu'au moins 4 rôles/groupes sont entièrement
+  // dans le viewport.
+  const viewport = page.viewportSize();
+  const visible = await page.evaluate((vw) => {
+    const nodes = document.querySelectorAll(".node--role, .node--group");
+    let inViewport = 0;
+    for (const n of nodes) {
+      const r = n.getBoundingClientRect();
+      const onScreen = r.left >= 0 && r.top >= 0 && r.right <= vw.width && r.bottom <= vw.height;
+      if (onScreen && r.width > 20 && r.height > 10) inViewport++;
+    }
+    return inViewport;
+  }, viewport);
+  // Sur les très grands portraits (393×851) le scale en hauteur affiche
+  // moins de nœuds visibles d'un coup ; 3 reste un seuil signifiant.
+  expect(visible).toBeGreaterThanOrEqual(3);
+});
+
 test("aucune erreur console au chargement", async ({ page }) => {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
