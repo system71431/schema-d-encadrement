@@ -506,6 +506,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 /* ====== Popup — bloc-note ====== */
+/* Backdrop pour le popup. Pas affiché par défaut (desktop) ; sur mobile,
+   activé par le @media plus bas pour capturer les taps en dehors du
+   bottom-sheet et fermer le popup. Reste transparent (UX iOS-like). */
+.pop-backdrop {
+  display: none;
+}
+
 .pop {
   position: fixed;
   background: var(--paper-1);
@@ -929,9 +936,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
   /* Bottom-sheet : sur mobile, le popup flottant positionné en JS donne
      un placement bizarre. On le force en bas de l'écran, plein largeur,
-     avec coins arrondis vers le haut. !important pour écraser les
-     `left`/`top`/`width` posés en style inline par Popup.jsx. */
-  .pop:not(.pop--wide) {
+     avec coins arrondis vers le haut. Important : on convertit AUSSI
+     pop--wide (sinon il garde le centrage 50/50 et couvre tout l'écran,
+     bloquant tous les taps suivants). !important pour écraser les
+     `left`/`top`/`width`/`transform` posés en style inline par Popup.jsx. */
+  /* Backdrop transparent qui capture les taps en dehors du sheet pour
+     fermer le popup. Sous le sheet (z-index inférieur), au-dessus du
+     reste de l'app (toolbar, schéma, légende). */
+  .pop-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+    background: transparent;
+  }
+
+  /* Note : on liste explicitement .pop ET .pop.pop--wide pour que la
+     spécificité de la seconde batte celle du sélecteur de base
+     `.pop.pop--wide` (qui a sa propre règle !important plus haut). */
+  .pop, .pop.pop--wide {
     position: fixed !important;
     left: 0 !important;
     right: 0 !important;
@@ -946,8 +969,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
     animation: popInBottom 0.22s cubic-bezier(.34, 1.56, .64, 1);
     padding-top: 22px;
   }
-  /* Petite poignée visuelle pour signaler que c'est un sheet (pas un menu). */
-  .pop:not(.pop--wide)::before {
+  /* Sur mobile on désactive le multi-colonnes du mode wide : trop étroit
+     pour être lisible, et la liste unifiée passe naturellement en flow. */
+  .pop.pop--wide .pop__tasks-list--unified {
+    columns: 1 !important;
+    column-gap: 0 !important;
+  }
+  /* Poignée visuelle haut du sheet. */
+  .pop::before {
     content: "";
     position: absolute;
     top: 8px;
