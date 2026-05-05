@@ -415,17 +415,25 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   const designAspect = DESIGN_W / DESIGN_H;
   const viewportAspect = (canvasPx.w > 0 && canvasPx.h > 0) ? canvasPx.w / canvasPx.h : designAspect;
   const isPortrait = viewportAspect < designAspect;
+  const widthFit = canvasPx.w / DESIGN_W;
+  const heightFit = canvasPx.h / DESIGN_H;
+  // Sur portrait, on plafonne l'overflow horizontal du design à 70% de
+  // la largeur canvas (= scale max = widthFit × 1.7). L'utilisateur voit
+  // toujours ~59% du design horizontalement quel que soit le téléphone,
+  // donc niveau de zoom et lisibilité cohérents. Le reste se voit en
+  // panant. heightFit reste le plafond vertical (pas d'overflow vertical).
+  const OVERFLOW_CAP = 1.7;
   const fitScale = (canvasPx.w > 0 && canvasPx.h > 0)
     ? (isPortrait
-        ? canvasPx.h / DESIGN_H
-        : Math.min(canvasPx.w / DESIGN_W, canvasPx.h / DESIGN_H))
+        ? Math.min(heightFit, widthFit * OVERFLOW_CAP)
+        : Math.min(widthFit, heightFit))
     : 1;
-  // Sur portrait, on aligne le design en haut-gauche au lieu de centrer.
-  // Comme ça l'utilisateur voit immédiatement les labels des containers
-  // (« Faitières », « Le groupe ») qui sont en haut à gauche, et il pan
-  // vers la droite pour explorer la suite.
-  const fitTx = isPortrait ? 0 : (canvasPx.w - DESIGN_W * fitScale) / 2;
-  const fitTy = isPortrait ? 0 : (canvasPx.h - DESIGN_H * fitScale) / 2;
+  // Centrage : sur portrait, design centré horizontalement (user voit
+  // le milieu du schéma — Coach, Responsable de groupe — où se trouve
+  // l'essentiel du contenu) et verticalement (espace vide haut/bas
+  // symétrique, lecture aérée).
+  const fitTx = (canvasPx.w - DESIGN_W * fitScale) / 2;
+  const fitTy = (canvasPx.h - DESIGN_H * fitScale) / 2;
   // Composition : visuellement, le fit transform s'applique d'abord à
   // l'élément (preserveAspectRatio + centrage), puis le pan/zoom utilisateur
   // par-dessus. CSS applique de droite à gauche → user à gauche, fit à droite.
