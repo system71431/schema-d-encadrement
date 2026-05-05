@@ -405,11 +405,27 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   // les proportions.
   const DESIGN_W = 1200;
   const DESIGN_H = 800;
+  // Sur les viewports plus étroits que le design (= portrait téléphone /
+  // tablette portrait), le fit homothétique strict laisse 30%+ d'écran
+  // vide en haut/bas. On change de stratégie : on fit en hauteur (le
+  // design remplit verticalement), au prix d'un débordement horizontal.
+  // L'utilisateur pan/pinch pour voir les extrémités. Sur paysage et
+  // tablette landscape, fit homothétique classique (les deux axes sont
+  // proches du design 3:2, pas besoin de booster).
+  const designAspect = DESIGN_W / DESIGN_H;
+  const viewportAspect = (canvasPx.w > 0 && canvasPx.h > 0) ? canvasPx.w / canvasPx.h : designAspect;
+  const isPortrait = viewportAspect < designAspect;
   const fitScale = (canvasPx.w > 0 && canvasPx.h > 0)
-    ? Math.min(canvasPx.w / DESIGN_W, canvasPx.h / DESIGN_H)
+    ? (isPortrait
+        ? canvasPx.h / DESIGN_H
+        : Math.min(canvasPx.w / DESIGN_W, canvasPx.h / DESIGN_H))
     : 1;
-  const fitTx = (canvasPx.w - DESIGN_W * fitScale) / 2;
-  const fitTy = (canvasPx.h - DESIGN_H * fitScale) / 2;
+  // Sur portrait, on aligne le design en haut-gauche au lieu de centrer.
+  // Comme ça l'utilisateur voit immédiatement les labels des containers
+  // (« Faitières », « Le groupe ») qui sont en haut à gauche, et il pan
+  // vers la droite pour explorer la suite.
+  const fitTx = isPortrait ? 0 : (canvasPx.w - DESIGN_W * fitScale) / 2;
+  const fitTy = isPortrait ? 0 : (canvasPx.h - DESIGN_H * fitScale) / 2;
   // Composition : visuellement, le fit transform s'applique d'abord à
   // l'élément (preserveAspectRatio + centrage), puis le pan/zoom utilisateur
   // par-dessus. CSS applique de droite à gauche → user à gauche, fit à droite.
