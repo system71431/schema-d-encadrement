@@ -163,6 +163,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
   box-shadow: none;
   overflow: hidden;
   z-index: 2;
+  /* On gère pan/pinch en JS — empêche le navigateur de double-tap-zoomer
+     ou de scroller la page pendant le geste. */
+  touch-action: none;
+}
+.schema.is-zoomed { cursor: grab; }
+.schema.is-zoomed:active { cursor: grabbing; }
+
+/* Bouton flottant pour réinitialiser le zoom utilisateur (visible
+   uniquement quand l'utilisateur a pané/zoomé en mode lecture). */
+.schema__reset-zoom {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 10;
+  background: var(--paper-1);
+  border: var(--border-thick) solid var(--ink);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-family: var(--font-hand);
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-hard);
+  transform: rotate(-1deg);
+  transition: background 0.12s, transform 0.12s;
+}
+.schema__reset-zoom:hover { background: var(--yellow); transform: rotate(0deg); }
+@media (max-width: 600px) {
+  .schema__reset-zoom { bottom: 12px; right: 12px; padding: 8px 12px; font-size: 14px; }
 }
 /* En orientation portrait (typiquement smartphone), le ratio écran ne
    correspond pas à celui du canvas (3:2). Plutôt que de laisser des
@@ -816,6 +844,30 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .app-fs.is-expanded .toolbar__expand { background: var(--blue); color: var(--paper-1); }
 
+/* Pastille SHA du build : injectée par vite.config.js. Permet de vérifier
+   en un coup d'œil quelle version est en train de tourner (utile sur la
+   GitHub Page une fois déployée). */
+.toolbar__version {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-3);
+  text-decoration: none;
+  padding: 3px 8px;
+  border: 1px dashed var(--ink-3);
+  border-radius: 999px;
+  opacity: 0.55;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  white-space: nowrap;
+  align-self: center;
+}
+.toolbar__version:hover {
+  opacity: 1;
+  background: var(--ink);
+  color: var(--paper-1);
+  border-color: var(--ink);
+}
+
 @media (max-width: 1000px) {
   /* Dès qu'on n'a plus la place pour la toolbar complète (titre + filtres
      + expand + édit + logo), on masque le logo et on réduit le titre.
@@ -874,6 +926,43 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .pop__eyebrow--name { font-size: 22px; padding: 1px 10px; }
   .pop__h3 { font-size: 13px; }
   .pop__desc { font-size: 13px; }
+
+  /* Bottom-sheet : sur mobile, le popup flottant positionné en JS donne
+     un placement bizarre. On le force en bas de l'écran, plein largeur,
+     avec coins arrondis vers le haut. !important pour écraser les
+     `left`/`top`/`width` posés en style inline par Popup.jsx. */
+  .pop:not(.pop--wide) {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    bottom: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: 75vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    transform: none !important;
+    animation: popInBottom 0.22s cubic-bezier(.34, 1.56, .64, 1);
+    padding-top: 22px;
+  }
+  /* Petite poignée visuelle pour signaler que c'est un sheet (pas un menu). */
+  .pop:not(.pop--wide)::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(33, 32, 29, 0.25);
+  }
+}
+
+@keyframes popInBottom {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 @media (max-width: 380px) {

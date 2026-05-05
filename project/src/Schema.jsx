@@ -220,6 +220,15 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   const dragMovedRef = useRef(false);
   const schemaRef = useRef(null);
   const [canvasPx, setCanvasPx] = useState({ w: 1, h: 1 });
+  // Pan + pinch zoom utilisateur (mobile principalement). Composé par-dessus
+  // le fit-to-screen homothétique. Désactivé en mode édition (le drag des
+  // nœuds y a déjà ses propres handlers).
+  const [userZoom, setUserZoom] = useState({ scale: 1, tx: 0, ty: 0 });
+  const gestureRef = useRef({ pointers: new Map(), lastPinch: null, panMoved: 0, panSuppressClick: false });
+  const isZoomed = userZoom.scale !== 1 || userZoom.tx !== 0 || userZoom.ty !== 0;
+  const resetZoom = useCallback(() => setUserZoom({ scale: 1, tx: 0, ty: 0 }), []);
+  // Sortie du mode édition → on remet le zoom à 0 (cohérence visuelle).
+  useEffect(() => { if (editMode) resetZoom(); }, [editMode, resetZoom]);
   useEffect(() => {
     const el = schemaRef.current;
     if (!el) return;
@@ -401,7 +410,106 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
     : 1;
   const fitTx = (canvasPx.w - DESIGN_W * fitScale) / 2;
   const fitTy = (canvasPx.h - DESIGN_H * fitScale) / 2;
-  const combinedTransform = "translate(" + fitTx + "px, " + fitTy + "px) scale(" + fitScale + ")";
+  // Composition : visuellement, le fit transform s'applique d'abord à
+  // l'élément (preserveAspectRatio + centrage), puis le pan/zoom utilisateur
+  // par-dessus. CSS applique de droite à gauche → user à gauche, fit à droite.
+  const userT = "translate(" + userZoom.tx + "px, " + userZoom.ty + "px) scale(" + userZoom.scale + ")";
+  const fitT = "translate(" + fitTx + "px, " + fitTy + "px) scale(" + fitScale + ")";
+  const combinedTransform = userT + " " + fitT;
+
+  // Gestes tactiles : 1 doigt = pan (au-delà d'un seuil pour ne pas bloquer
+  // les taps), 2 doigts = pinch zoom autour du midpoint. Désactivé en mode
+  // édition. On utilise les Pointer Events (unifié souris/tactile/stylet).
+  useEffect(() => {
+    if (editMode) return;
+    const el = schemaRef.current;
+    if (!el) return;
+    const ZOOM_MIN = 0.8;
+    const ZOOM_MAX = 6;
+    const PAN_THRESHOLD_PX = 8;
+
+    const onPointerDown = (e) => {
+      // Ignore boutons souris droit/milieu (laisser le menu contextuel passer).
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      const g = gestureRef.current;
+      g.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      g.panMoved = 0;
+      g.panSuppressClick = false;
+      if (g.pointers.size >= 2) {
+        const pts = Array.from(g.pointers.values()).slice(0, 2);
+        g.lastPinch = {
+          dist: Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y),
+          cx: (pts[0].x + pts[1].x) / 2,
+          cy: (pts[0].y + pts[1].y) / 2,
+        };
+        // Empêcher la sélection / scroll natif pendant le pinch.
+        e.preventDefault();
+      }
+    };
+
+    const onPointerMove = (e) => {
+      const g = gestureRef.current;
+      const ptr = g.pointers.get(e.pointerId);
+      if (!ptr) return;
+      const prev = { x: ptr.x, y: ptr.y };
+      ptr.x = e.clientX;
+      ptr.y = e.clientY;
+
+      if (g.pointers.size === 1) {
+        const dx = e.clientX - prev.x;
+        const dy = e.clientY - prev.y;
+        g.panMoved += Math.abs(dx) + Math.abs(dy);
+        if (g.panMoved > PAN_THRESHOLD_PX) {
+          // Au-delà du seuil = pan. On bloque le clic qui suivrait.
+          g.panSuppressClick = true;
+          setUserZoom((z) => ({ ...z, tx: z.tx + dx, ty: z.ty + dy }));
+          e.preventDefault();
+        }
+      } else if (g.pointers.size >= 2) {
+        const pts = Array.from(g.pointers.values()).slice(0, 2);
+        const newDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        const newCx = (pts[0].x + pts[1].x) / 2;
+        const newCy = (pts[0].y + pts[1].y) / 2;
+        const last = g.lastPinch;
+        if (last && last.dist > 0) {
+          const factor = newDist / last.dist;
+          const rect = el.getBoundingClientRect();
+          const cxLocal = newCx - rect.left;
+          const cyLocal = newCy - rect.top;
+          const dCx = newCx - last.cx;
+          const dCy = newCy - last.cy;
+          setUserZoom((z) => {
+            const newScale = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z.scale * factor));
+            const realFactor = newScale / z.scale;
+            // Zoom centré sur le midpoint + déplacement du midpoint lui-même.
+            const tx = cxLocal - (cxLocal - z.tx) * realFactor + dCx;
+            const ty = cyLocal - (cyLocal - z.ty) * realFactor + dCy;
+            return { scale: newScale, tx, ty };
+          });
+          g.lastPinch = { dist: newDist, cx: newCx, cy: newCy };
+        }
+        g.panSuppressClick = true;
+        e.preventDefault();
+      }
+    };
+
+    const onPointerUp = (e) => {
+      const g = gestureRef.current;
+      g.pointers.delete(e.pointerId);
+      if (g.pointers.size < 2) g.lastPinch = null;
+    };
+
+    el.addEventListener("pointerdown", onPointerDown, { passive: false });
+    el.addEventListener("pointermove", onPointerMove, { passive: false });
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
+    return () => {
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [editMode]);
 
   // Lien actuellement édité (pour afficher ses poignées).
   const editingLink = (editMode && editing && editing.type === "link")
@@ -409,7 +517,16 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
     : null;
 
   return (
-    <div ref={schemaRef} className={"schema" + (editMode ? " is-edit-mode" : "") + (linkDrawing ? " is-link-drawing" : "")} onClick={(e) => onBlankClick(e)}>
+    <div ref={schemaRef} className={"schema" + (editMode ? " is-edit-mode" : "") + (linkDrawing ? " is-link-drawing" : "") + (isZoomed ? " is-zoomed" : "")}
+      onClick={(e) => {
+        // Après un pan/pinch, le navigateur émet un click — on l'ignore
+        // pour ne pas refermer le popup ou perdre la sélection.
+        if (gestureRef.current.panSuppressClick) {
+          gestureRef.current.panSuppressClick = false;
+          return;
+        }
+        onBlankClick(e);
+      }}>
       <div className="schema__viewport">
       <div className="schema__design" style={{ transform: combinedTransform }}>
       <svg className="schema__svg" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -538,6 +655,13 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
       })() : null}
       </div>{/* /.schema__design */}
       </div>{/* /.schema__viewport */}
+      {!editMode && isZoomed ? (
+        <button type="button" className="schema__reset-zoom"
+          onClick={(e) => { e.stopPropagation(); resetZoom(); }}
+          title="Réinitialiser le zoom et le déplacement">
+          ⟲ Recadrer
+        </button>
+      ) : null}
     </div>
   );
 }
