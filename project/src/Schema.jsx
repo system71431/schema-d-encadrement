@@ -72,7 +72,7 @@ function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
   }
 }
 
-function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSource, onClick, onHover, onLeave, onDragStart, registerSize }) {
+function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSource, hasTasks, onClick, onHover, onLeave, onDragStart, registerSize }) {
   const ref = useRef(null);
   useEffect(() => {
     if (!ref.current) return;
@@ -138,6 +138,14 @@ function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSourc
       onMouseLeave={onLeave}>
       <span className="node__label">{node.label}</span>
       {node.sublabel ? <span className="node__sublabel">{node.sublabel}</span> : null}
+      {hasTasks && !editMode ? (
+        <span className="node__has-tasks" aria-label="Cliquer pour voir les tâches">
+          <svg viewBox="0 0 14 14" aria-hidden="true">
+            <path d="M 3.5 7.5 L 6 10 L 11 4.5" fill="none" stroke="currentColor"
+              strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -274,6 +282,26 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   }, [focused, links, nodes]);
 
   const visibleLinks = links.filter((l) => filter === "all" ? true : l.kind === filter);
+
+  // Set des nœuds (role/group/resource) qui ont au moins une tâche associée,
+  // soit définie directement sur le nœud (node.tasks[].towards), soit via un
+  // lien d'encadrement (link.tasks[nodeId]). Sert à afficher une pastille
+  // « cliquable » qui invite à ouvrir le popup pour voir les tâches.
+  const nodesWithTasks = useMemo(() => {
+    const s = new Set();
+    nodes.forEach((n) => {
+      if (n.kind !== "role" && n.kind !== "group" && n.kind !== "resource") return;
+      if (Array.isArray(n.tasks) && n.tasks.some((t) => t && t.towards)) s.add(n.id);
+    });
+    links.forEach((l) => {
+      if (l.kind !== "encadrement" || !l.tasks) return;
+      Object.keys(l.tasks).forEach((rid) => {
+        const ts = l.tasks[rid];
+        if (Array.isArray(ts) && ts.length > 0) s.add(rid);
+      });
+    });
+    return s;
+  }, [nodes, links]);
 
   const onDragStart = (id, e) => {
     if (!editMode || e.button !== 0) return;
@@ -646,6 +674,7 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
           return (
             <SchemaNode key={n.id} node={n} selected={isSel} highlighted={isHl} dimmed={isDim}
               editMode={editMode} isLinkSource={linkDrawing?.from === n.id}
+              hasTasks={nodesWithTasks.has(n.id)}
               onClick={(nd, ev) => onPickNode(nd.id, ev)}
               onHover={(nd) => setHover({ type: "node", id: nd.id })}
               onLeave={() => setHover(null)}
