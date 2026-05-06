@@ -57,6 +57,13 @@ function makeShareFilename(rawName) {
 // qu'une création (sinon GitHub renvoie 422).
 async function uploadHtmlToGitHub(token, filename, html) {
   const path = SHARE_PATH_PREFIX + filename;
+  return uploadFileToGitHub(token, path, html, `Partage du schéma : ${filename}`);
+}
+
+// Push générique d'un fichier texte (UTF-8) vers le repo. Mutualise la
+// logique « probe SHA si existe puis PUT » entre le partage HTML et la
+// publication de la version officielle (data.js).
+async function uploadFileToGitHub(token, path, text, commitMessage) {
   const apiUrl = `https://api.github.com/repos/${SHARE_REPO_OWNER}/${SHARE_REPO_NAME}/contents/${path}`;
   const headers = {
     Authorization: `token ${token}`,
@@ -70,12 +77,12 @@ async function uploadHtmlToGitHub(token, filename, html) {
       existingSha = data && data.sha ? data.sha : null;
     }
   } catch (_) {}
-  const content = await utf8ToBase64(html);
+  const content = await utf8ToBase64(text);
   const res = await fetch(apiUrl, {
     method: "PUT",
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify({
-      message: `Partage du schéma : ${filename}`,
+      message: commitMessage,
       content,
       branch: SHARE_BRANCH,
       ...(existingSha ? { sha: existingSha } : {}),
@@ -84,7 +91,6 @@ async function uploadHtmlToGitHub(token, filename, html) {
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}));
     if (res.status === 401 || res.status === 403) {
-      // Token invalide → on le purge pour que l'app redemande à la prochaine fois.
       try { localStorage.removeItem(GH_TOKEN_KEY); } catch (_) {}
       throw new Error(
         `Token GitHub refusé (${res.status}). Génère un nouveau Personal Access Token avec scope « repo » sur https://github.com/settings/tokens et réessaie.`
@@ -92,7 +98,28 @@ async function uploadHtmlToGitHub(token, filename, html) {
     }
     throw new Error(`Erreur GitHub ${res.status} : ${errBody.message || "échec inconnu"}`);
   }
-  return SHARE_BASE_URL + filename;
+  return true;
+}
+
+// Sérialise les données courantes vers le format attendu par data.js.
+// On régénère un module ES propre avec les exports NODES/LINKS/HEADER/
+// DATA_VERSION. La version est l'ISO timestamp courant : tout brouillon
+// localStorage antérieur sera purgé automatiquement par App.jsx (cf. le
+// useMemo `initial`) puisque sa `dataVersion` ne matchera plus.
+function buildDataModuleSource(nodes, links, header, version) {
+  const j = (val) => JSON.stringify(val, null, 2);
+  return (
+    "// Fichier généré automatiquement par le bouton « Publier la version officielle ».\n" +
+    "// La modification manuelle est OK, mais sera écrasée au prochain push depuis l'app.\n" +
+    "\n" +
+    `export const NODES = ${j(nodes)};\n` +
+    "\n" +
+    `export const LINKS = ${j(links)};\n` +
+    "\n" +
+    `export const HEADER = ${j(header)};\n` +
+    "\n" +
+    `export const DATA_VERSION = ${JSON.stringify(version)};\n`
+  );
 }
 
 // Lit l'instantané JSON éventuellement embarqué dans
@@ -560,6 +587,67 @@ function App() {
     }
   };
 
+  // « Publier la version officielle » : pousse les données courantes dans
+  // project/src/data.js sur main. Le workflow Actions rebuild + redéploie
+  // → tous les visiteurs (et tous tes navigateurs) verront cette version
+  // après ~2 min. La DATA_VERSION est bumpée à l'ISO courant : les
+  // brouillons localStorage des autres appareils sont automatiquement
+  // purgés (cf. logique de `initial` qui compare DATA_VERSION).
+  const [publishBusy, setPublishBusy] = useState(false);
+  const onPublishOfficial = useCallback(async () => {
+    if (publishBusy) return;
+    const ok = window.confirm(
+      "Publier comme version officielle ?\n\n" +
+      "Cela remplace project/src/data.js sur GitHub. Tous les visiteurs " +
+      "(et tous tes appareils) recevront cette version après le re-deploy " +
+      "(~2 min). Les brouillons d'édition non publiés sur les autres " +
+      "navigateurs seront purgés."
+    );
+    if (!ok) return;
+    let token;
+    try { token = localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (_) { token = ""; }
+    if (!token) {
+      const entered = window.prompt(
+        "Pour publier sur GitHub, colle ton Personal Access Token (scope « repo »).\n" +
+        "Tu peux en générer un sur : https://github.com/settings/tokens"
+      );
+      if (!entered) return;
+      token = entered.trim();
+      try { localStorage.setItem(GH_TOKEN_KEY, token); } catch (_) {}
+    }
+    setPublishBusy(true);
+    try {
+      const newVersion = new Date().toISOString();
+      const source = buildDataModuleSource(nodes, links, header, newVersion);
+      await uploadFileToGitHub(
+        token,
+        "project/src/data.js",
+        source,
+        `Publication officielle (${newVersion})`
+      );
+      // Met à jour le brouillon local pour matcher la nouvelle version,
+      // sinon au prochain reload de cet appareil le brouillon serait purgé
+      // alors qu'il est en réalité aligné avec la version qu'on vient de pousser.
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          nodes, links, header,
+          savedAt: Date.now(),
+          dataVersion: newVersion,
+        }));
+      } catch (_) {}
+      alert(
+        "Version publiée sur GitHub.\n\n" +
+        "Le re-deploy démarre maintenant (~2 min). " +
+        "Une fois terminé, recharge la page sur tes autres appareils — " +
+        "ils auront la même version que celle-ci."
+      );
+    } catch (e) {
+      alert("Échec de la publication : " + (e && e.message ? e.message : String(e)));
+    } finally {
+      setPublishBusy(false);
+    }
+  }, [nodes, links, header, publishBusy]);
+
   // « Partager » : génère le HTML autonome (mode viewer) puis le pousse via
   // l'API GitHub Contents dans `project/public/shared/<nom>.html`. L'URL
   // résultante est publique sur GitHub Pages dès que le workflow Actions a
@@ -743,6 +831,8 @@ function App() {
         onGenerateViewer={onGenerateViewer}
         onShareViewer={onShareViewer}
         shareBusy={shareBusy}
+        onPublishOfficial={onPublishOfficial}
+        publishBusy={publishBusy}
         onUndo={undo}
         onRedo={redo}
         canUndo={canUndo}
