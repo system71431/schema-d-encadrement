@@ -1,3 +1,6 @@
+// Fichier généré automatiquement par le bouton « Publier la version officielle ».
+// La modification manuelle est OK, mais sera écrasée au prochain push depuis l'app.
+
 export const NODES = [
   {
     "id": "n-1777134870414",
@@ -16,10 +19,10 @@ export const NODES = [
   },
   {
     "id": "n-1777134901310",
-    "label": "Coca",
+    "label": "Coordination cantonale",
     "kind": "group",
-    "x": 49.58143234713213,
-    "y": 25.85046450737192,
+    "x": 48.969544235244015,
+    "y": 25.695569844534887,
     "description": "",
     "responsabilites": [],
     "superviseurs": []
@@ -29,7 +32,7 @@ export const NODES = [
     "label": "EC",
     "kind": "group",
     "x": 66.15026118449516,
-    "y": 25.622727391447693,
+    "y": 25.77762205428473,
     "description": "",
     "responsabilites": [],
     "superviseurs": [],
@@ -183,7 +186,7 @@ export const NODES = [
     "id": "n-1777135245742",
     "label": "Le groupe",
     "kind": "container",
-    "x": 49,
+    "x": 49.08741258741259,
     "y": 74.57567026169038,
     "description": "",
     "responsabilites": [],
@@ -198,8 +201,8 @@ export const NODES = [
     "id": "n-1777135318806",
     "label": "Jeunesse et Sport",
     "kind": "group",
-    "x": 29.396486970292454,
-    "y": 26.405067667017427,
+    "x": 29.309074382879867,
+    "y": 26.095278341343363,
     "description": "",
     "responsabilites": [],
     "superviseurs": []
@@ -406,8 +409,8 @@ export const NODES = [
     "id": "n-1777147841773",
     "kind": "group",
     "label": "MsDs",
-    "x": 49.45504904921086,
-    "y": 12.513633807627762,
+    "x": 48.14386023802204,
+    "y": 14.372369761672148,
     "description": "",
     "responsabilites": [],
     "superviseurs": []
@@ -510,6 +513,7 @@ export const NODES = [
     "groupId": "g-1777153622816"
   }
 ];
+
 export const LINKS = [
   {
     "id": "l-1777148774902",
@@ -519,10 +523,14 @@ export const LINKS = [
     "label": "Encadre",
     "description": "",
     "toAnchor": {
-      "x": 0,
-      "y": 0.4518207717779125
+      "x": -0.12140077491507899,
+      "y": 0.37732583569409917
     },
-    "curve": 9
+    "curve": 9,
+    "labelOffset": {
+      "x": 0.04612546125461847,
+      "y": 0
+    }
   },
   {
     "id": "l-1777148794518",
@@ -532,8 +540,8 @@ export const LINKS = [
     "label": "Encadre",
     "description": "",
     "toAnchor": {
-      "x": 0.48014249763424244,
-      "y": 0.012317518565776406
+      "x": 0.47797419993137785,
+      "y": 0.04487838858012295
     },
     "curve": 2,
     "labelOffset": {
@@ -549,14 +557,18 @@ export const LINKS = [
     "label": "Echange d'informations",
     "description": "",
     "toAnchor": {
-      "x": 0.31949152261947894,
-      "y": 0
+      "x": 0.34167962090521453,
+      "y": -0.08107968549271256
     },
     "labelOffset": {
       "x": -3.9335664335664333,
       "y": 0.14092445721419722
     },
-    "curve": 10
+    "curve": 10,
+    "fromAnchor": {
+      "x": 0.47949418251015746,
+      "y": 1.2878949561857267
+    }
   },
   {
     "id": "l-1777148841334",
@@ -571,8 +583,8 @@ export const LINKS = [
       "y": 1
     },
     "toAnchor": {
-      "x": 0.4937487384751009,
-      "y": 0
+      "x": 0.45906280278507805,
+      "y": -0.19865316289017199
     }
   },
   {
@@ -587,10 +599,14 @@ export const LINKS = [
       "y": 1
     },
     "toAnchor": {
-      "x": 0.6865301863764024,
-      "y": 0
+      "x": 0.6939262191383132,
+      "y": -0.08107968549271442
     },
-    "curve": -3
+    "curve": -3,
+    "labelOffset": {
+      "x": -0.09225092250922273,
+      "y": 0.08888888888888857
+    }
   },
   {
     "id": "l-1777148900870",
@@ -614,7 +630,11 @@ export const LINKS = [
     "to": "n-1777147392133",
     "kind": "encadrement",
     "label": "Encadre",
-    "description": ""
+    "description": "",
+    "toAnchor": {
+      "x": 0.507556339882316,
+      "y": -0.08107968549271256
+    }
   },
   {
     "id": "l-1777148924535",
@@ -624,8 +644,8 @@ export const LINKS = [
     "label": "Echanges d'informations",
     "description": "",
     "toAnchor": {
-      "x": 0.5637767743728229,
-      "y": 0
+      "x": 0.5572718812642302,
+      "y": 0.032560870014346543
     },
     "labelOffset": {
       "x": -4.108391608391614,
@@ -659,10 +679,40 @@ export const LINKS = [
       "x": 0.6158863479350389,
       "y": 0.987370447279914
     }
+  },
+  {
+    "id": "l-1778052210851",
+    "from": "n-1777147841773",
+    "to": "n-1777135318806",
+    "kind": "collaboration",
+    "label": "Collaboration",
+    "description": ""
+  },
+  {
+    "id": "l-1778052223890",
+    "from": "n-1777147841773",
+    "to": "n-1777134901310",
+    "kind": "encadrement",
+    "label": "Encadre",
+    "description": ""
+  },
+  {
+    "id": "l-1778052226971",
+    "from": "n-1777147841773",
+    "to": "n-1777134943301",
+    "kind": "encadrement",
+    "label": "Encadre",
+    "description": "",
+    "labelOffset": {
+      "x": 0,
+      "y": 0
+    }
   }
 ];
+
 export const HEADER = {
-  title: "Schéma d'encadrement",
-  subtitle: "du groupe scout — qui encadre qui ?"
+  "title": "Schéma d'encadrement ASN",
+  "subtitle": "dans la canton, qui encadre qui ?"
 };
-export const DATA_VERSION = "2026-05-01T00:00:00";
+
+export const DATA_VERSION = "2026-05-06T11:41:52.128Z";
