@@ -492,6 +492,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .legend-arrow--enc { fill: var(--ink); }
 .legend-arrow--coll { fill: var(--ink); }
 
+/* Pastille légende — réplique miniature de `.node__has-tasks` pour expliquer
+   le cue visuel posé sur les nœuds avec tâches. */
+.legend-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  background: var(--green);
+  color: var(--paper-1);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: rotate(8deg);
+  flex-shrink: 0;
+}
+.legend-badge svg { width: 13px; height: 13px; display: block; }
+
 /* ====== Logo Scoutisme Neuchâtelois ====== */
 .brand-logo {
   display: block;
@@ -955,8 +972,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
   /* Sur portrait téléphone, la toolbar wrap sur 2 lignes (titre + filtres)
      et fait ~80px de haut. On laisse 96px de marge avant le schéma pour
-     éviter que les nœuds du haut soient masqués par les filtres. */
-  .schema { top: 96px; left: 6px; right: 6px; bottom: 6px; }
+     éviter que les nœuds du haut soient masqués par les filtres. Le bas
+     laisse ~40px pour la mini-légende cliquable au-dessus du home-indicator. */
+  .schema { top: 96px; left: 6px; right: 6px; bottom: 44px; }
 
   .node--role { min-width: 70px; padding: 5px 12px; }
   .node--role .node__label { font-size: 13px; }
@@ -972,7 +990,31 @@ button { font: inherit; color: inherit; cursor: pointer; }
     left: 10px;
   }
 
-  .legend { display: none; }
+  /* Sur mobile on cache les items de légende pour les flèches (le lecteur
+     les déduit visuellement) mais on garde l'item « tâches disponibles »
+     qui explique le cue cliquable — pas évident sans légende. La légende
+     est purement informative : pointer-events:none pour ne pas voler les
+     taps destinés au bouton Recadrer ou aux nœuds tout en bas du schéma. */
+  .legend {
+    display: flex;
+    left: 8px;
+    right: 8px;
+    bottom: 6px;
+    padding: 4px 10px;
+    background: var(--paper-1);
+    border: var(--border-thick) solid var(--ink);
+    border-radius: 999px;
+    box-shadow: var(--shadow-hard-sm);
+    flex-direction: row;
+    gap: 8px;
+    max-width: calc(100% - 16px);
+    pointer-events: none;
+  }
+  .legend__item:not(.legend__item--badge) { display: none; }
+  .legend__item--badge { font-size: 11px; gap: 8px; }
+  .legend__item--badge strong { font-size: 12px; }
+  .legend-badge { width: 18px; height: 18px; border-width: 1.5px; }
+  .legend-badge svg { width: 11px; height: 11px; }
 
   .pop { padding: 12px 14px 14px; }
   .pop__title { font-size: 32px; }
