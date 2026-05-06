@@ -529,6 +529,7 @@ function EditorPanel(props) {
     onExport, onImport, onExitEdit, onResetDraft,
     selectedIds, onFuseSelected, onClearMultiSelection,
     onGenerateViewer,
+    onShareViewer, shareBusy,
     onUndo, onRedo, canUndo, canRedo,
     onExportPNG,
     header, onHeaderChange,
@@ -642,6 +643,10 @@ function EditorPanel(props) {
         <button type="button" onClick={onExport}>Exporter JSON</button>
         <button type="button" onClick={onExportPNG} title="Exporte le schéma en image PNG">Exporter PNG</button>
         <button type="button" onClick={onGenerateViewer} title="Génère une page HTML autonome (viewer-only) avec les données actuelles">Générer page</button>
+        <button type="button" onClick={onShareViewer} disabled={!!shareBusy}
+          title="Pousse une copie HTML autonome sur GitHub et donne une URL publique (déploiement ~2 min)">
+          {shareBusy ? "Partage…" : "Partager (GitHub)"}
+        </button>
         <button type="button" className="editor-reset" onClick={onResetDraft} title="Annule toutes les modifications non exportées">Réinitialiser</button>
       </div>
     </aside>

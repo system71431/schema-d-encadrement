@@ -12,6 +12,89 @@ import {
 import logoUrl from "./logo-scoutisme-neuchatelois.png";
 import "./styles.css";
 
+// Cible des partages : fichier HTML poussé via l'API GitHub Contents.
+// Le repo est servi par GitHub Pages, donc tout fichier dans
+// `project/public/shared/` est copié par Vite vers `dist/shared/` au build,
+// puis publié à `https://<user>.github.io/<repo>/shared/<nom>.html`.
+const SHARE_REPO_OWNER = "system71431";
+const SHARE_REPO_NAME = "schema-d-encadrement";
+const SHARE_BRANCH = "main";
+const SHARE_PATH_PREFIX = "project/public/shared/";
+const SHARE_BASE_URL = `https://${SHARE_REPO_OWNER}.github.io/${SHARE_REPO_NAME}/shared/`;
+const GH_TOKEN_KEY = "schema-encadrement-gh-token";
+
+// Encode une string UTF-8 en base64 — robuste sur les gros payloads (le HTML
+// fait ~480 KB) où `btoa(String.fromCharCode(...))` casse à cause de la
+// limite d'arguments. FileReader gère le streaming proprement.
+function utf8ToBase64(str) {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([str]);
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || "").split(",")[1] || "");
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+
+// Slugifie un nom utilisateur en filename safe : ASCII bas, tirets, garde
+// l'extension .html. Si vide, fallback sur un timestamp aléatoire.
+function makeShareFilename(rawName) {
+  const base = (rawName || "").trim().toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!base) {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const rand = Math.random().toString(36).slice(2, 7);
+    return `schema-${stamp}-${rand}.html`;
+  }
+  return base.endsWith(".html") ? base : `${base}.html`;
+}
+
+// Push un blob HTML vers GitHub via l'API Contents. Si le fichier existe
+// déjà au même chemin, on récupère son SHA pour faire un update plutôt
+// qu'une création (sinon GitHub renvoie 422).
+async function uploadHtmlToGitHub(token, filename, html) {
+  const path = SHARE_PATH_PREFIX + filename;
+  const apiUrl = `https://api.github.com/repos/${SHARE_REPO_OWNER}/${SHARE_REPO_NAME}/contents/${path}`;
+  const headers = {
+    Authorization: `token ${token}`,
+    Accept: "application/vnd.github+json",
+  };
+  let existingSha = null;
+  try {
+    const probe = await fetch(`${apiUrl}?ref=${SHARE_BRANCH}`, { headers });
+    if (probe.ok) {
+      const data = await probe.json();
+      existingSha = data && data.sha ? data.sha : null;
+    }
+  } catch (_) {}
+  const content = await utf8ToBase64(html);
+  const res = await fetch(apiUrl, {
+    method: "PUT",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: `Partage du schéma : ${filename}`,
+      content,
+      branch: SHARE_BRANCH,
+      ...(existingSha ? { sha: existingSha } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    if (res.status === 401 || res.status === 403) {
+      // Token invalide → on le purge pour que l'app redemande à la prochaine fois.
+      try { localStorage.removeItem(GH_TOKEN_KEY); } catch (_) {}
+      throw new Error(
+        `Token GitHub refusé (${res.status}). Génère un nouveau Personal Access Token avec scope « repo » sur https://github.com/settings/tokens et réessaie.`
+      );
+    }
+    throw new Error(`Erreur GitHub ${res.status} : ${errBody.message || "échec inconnu"}`);
+  }
+  return SHARE_BASE_URL + filename;
+}
+
 // Lit l'instantané JSON éventuellement embarqué dans
 // <script id="schema-data" type="application/json">. Quand le bloc est vide
 // (cas du bundle de base), on retombe sur les seeds importés depuis data.js.
@@ -477,6 +560,49 @@ function App() {
     }
   };
 
+  // « Partager » : génère le HTML autonome (mode viewer) puis le pousse via
+  // l'API GitHub Contents dans `project/public/shared/<nom>.html`. L'URL
+  // résultante est publique sur GitHub Pages dès que le workflow Actions a
+  // re-build et redéployé (~2 min).
+  const [shareBusy, setShareBusy] = useState(false);
+  const onShareViewer = useCallback(async () => {
+    if (shareBusy) return;
+    let token;
+    try { token = localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (_) { token = ""; }
+    if (!token) {
+      const entered = window.prompt(
+        "Pour publier sur GitHub, colle ton Personal Access Token (scope « repo »).\n" +
+        "Tu peux en générer un sur : https://github.com/settings/tokens\n\n" +
+        "Le token sera mémorisé localement sur cet appareil — tu ne le ressaisiras plus."
+      );
+      if (!entered) return;
+      token = entered.trim();
+      try { localStorage.setItem(GH_TOKEN_KEY, token); } catch (_) {}
+    }
+    const defaultName = (header && header.title) ? header.title : "schema";
+    const wantedName = window.prompt(
+      "Nom de ta page partagée (laisse vide pour un nom auto avec date) :",
+      defaultName
+    );
+    if (wantedName === null) return;
+    const filename = makeShareFilename(wantedName);
+    setShareBusy(true);
+    try {
+      const html = buildViewerHTML(nodes, links, header);
+      const url = await uploadHtmlToGitHub(token, filename, html);
+      try { await navigator.clipboard.writeText(url); } catch (_) {}
+      alert(
+        "Schéma poussé sur GitHub.\n\n" +
+        "URL (copiée dans le presse-papiers) :\n" + url + "\n\n" +
+        "La page sera disponible publiquement dès que le déploiement automatique sera terminé (~2 min)."
+      );
+    } catch (e) {
+      alert("Échec du partage : " + (e && e.message ? e.message : String(e)));
+    } finally {
+      setShareBusy(false);
+    }
+  }, [nodes, links, header, shareBusy]);
+
   // Export PNG : on capture `.schema__viewport` (parent du `.schema__design`
   // transformé) parce que html2canvas gère mal les transformations CSS.
   // Le viewport contient déjà tout ce qui est rendu, à la résolution écran.
@@ -615,6 +741,8 @@ function App() {
         onFuseSelected={onFuseSelected}
         onClearMultiSelection={onClearMultiSelection}
         onGenerateViewer={onGenerateViewer}
+        onShareViewer={onShareViewer}
+        shareBusy={shareBusy}
         onUndo={undo}
         onRedo={redo}
         canUndo={canUndo}
