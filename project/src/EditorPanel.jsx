@@ -530,6 +530,7 @@ function EditorPanel(props) {
     selectedIds, onFuseSelected, onClearMultiSelection,
     onGenerateViewer,
     onShareViewer, shareBusy,
+    onPublishOfficial, publishBusy,
     onUndo, onRedo, canUndo, canRedo,
     onExportPNG,
     header, onHeaderChange,
@@ -646,6 +647,11 @@ function EditorPanel(props) {
         <button type="button" onClick={onShareViewer} disabled={!!shareBusy}
           title="Pousse une copie HTML autonome sur GitHub et donne une URL publique (déploiement ~2 min)">
           {shareBusy ? "Partage…" : "Partager (GitHub)"}
+        </button>
+        <button type="button" className="editor-publish" onClick={onPublishOfficial}
+          disabled={!!publishBusy}
+          title="Remplace data.js sur GitHub : tous les visiteurs et appareils auront cette version après ~2 min">
+          {publishBusy ? "Publication…" : "Publier la version officielle"}
         </button>
         <button type="button" className="editor-reset" onClick={onResetDraft} title="Annule toutes les modifications non exportées">Réinitialiser</button>
       </div>
