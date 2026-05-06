@@ -906,7 +906,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar__expand { width: 30px; height: 30px; font-size: 15px; }
   .brand-logo { display: none; }
 
-  .schema { top: 70px; left: 6px; right: 6px; bottom: 6px; }
+  /* Sur portrait téléphone, la toolbar wrap sur 2 lignes (titre + filtres)
+     et fait ~80px de haut. On laisse 96px de marge avant le schéma pour
+     éviter que les nœuds du haut soient masqués par les filtres. */
+  .schema { top: 96px; left: 6px; right: 6px; bottom: 6px; }
 
   .node--role { min-width: 70px; padding: 5px 12px; }
   .node--role .node__label { font-size: 13px; }
@@ -964,6 +967,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
     transform: none !important;
     animation: popInBottom 0.22s cubic-bezier(.34, 1.56, .64, 1);
     padding-top: 22px;
+    /* `position: fixed` est positionné par rapport au viewport et ignore le
+       padding safe-area du body. On rajoute donc le inset bas ici pour ne
+       pas passer sous le home-indicator iOS (sinon les boutons du popup
+       sont masqués par la barre système). */
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
   /* Sur mobile on désactive le multi-colonnes du mode wide : trop étroit
      pour être lisible, et la liste unifiée passe naturellement en flow. */
@@ -1000,7 +1008,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar__expand { display: none; }
   .brand-logo { display: none; }
 
-  .schema { top: 56px; left: 4px; right: 4px; bottom: 4px; }
+  .schema { top: 76px; left: 4px; right: 4px; bottom: 4px; }
 
   .node--role .node__label,
   .node--resource .node__label { font-size: 11.5px; }
