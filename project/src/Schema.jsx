@@ -450,7 +450,7 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
     if (editMode) return;
     const el = schemaRef.current;
     if (!el) return;
-    const ZOOM_MIN = 0.8;
+    const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 6;
     const PAN_THRESHOLD_PX = 8;
 
