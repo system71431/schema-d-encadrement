@@ -417,12 +417,14 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
   const isPortrait = viewportAspect < designAspect;
   const widthFit = canvasPx.w / DESIGN_W;
   const heightFit = canvasPx.h / DESIGN_H;
-  // Sur portrait, on plafonne l'overflow horizontal du design à 70% de
-  // la largeur canvas (= scale max = widthFit × 1.7). L'utilisateur voit
-  // toujours ~59% du design horizontalement quel que soit le téléphone,
-  // donc niveau de zoom et lisibilité cohérents. Le reste se voit en
-  // panant. heightFit reste le plafond vertical (pas d'overflow vertical).
-  const OVERFLOW_CAP = 1.7;
+  // Sur portrait, on plafonne l'overflow horizontal du design (scale max =
+  // widthFit × OVERFLOW_CAP). heightFit reste le plafond vertical (pas
+  // d'overflow vertical). Avec 2.5, sur un iPhone moderne (393×851, ratio
+  // ~9:19.5) on remplit ~84% de la hauteur du schéma au lieu de ~55%, tout
+  // en gardant ~40% du design visible horizontalement (le reste se voit en
+  // panant ou pinchant). Compromis entre "trop d'espace vide en haut/bas"
+  // et "trop d'overflow latéral à panner".
+  const OVERFLOW_CAP = 2.5;
   const fitScale = (canvasPx.w > 0 && canvasPx.h > 0)
     ? (isPortrait
         ? Math.min(heightFit, widthFit * OVERFLOW_CAP)
