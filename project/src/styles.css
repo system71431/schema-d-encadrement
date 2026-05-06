@@ -352,6 +352,53 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .node--group .node__sublabel { color: var(--ink-3); }
 
+/* Pastille verte « ✓ » sur les rôles/groupes/ressources qui ont des tâches.
+   Affiche un cue visuel cliquable : invite à taper sur le nœud pour ouvrir
+   le popup et lire les tâches. Position absolue dans le coin haut-droit du
+   nœud, légèrement inclinée pour le côté hand-drawn cohérent avec le reste.
+   Masquée en mode édition (cf. JSX) — la pastille de glissage prendrait
+   le pas sinon. */
+.node__has-tasks {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background: var(--green);
+  color: var(--paper-1);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  box-shadow: 2px 2px 0 var(--ink);
+  transform: rotate(8deg);
+  pointer-events: none;
+  z-index: 3;
+  animation: hasTasksPulse 2.4s ease-in-out infinite;
+}
+.node__has-tasks svg {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+@keyframes hasTasksPulse {
+  0%, 100% { transform: rotate(8deg) scale(1); }
+  50%      { transform: rotate(8deg) scale(1.12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .node__has-tasks { animation: none; }
+}
+@media (max-width: 600px) {
+  .node__has-tasks {
+    width: 16px;
+    height: 16px;
+    top: -6px;
+    right: -7px;
+    border-width: 1.5px;
+  }
+  .node__has-tasks svg { width: 10px; height: 10px; }
+}
+
 /* ====== Links ====== */
 .link__line {
   stroke: var(--ink);
