@@ -38,28 +38,10 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
         default: return k;
       }
     })(node.kind);
-    const incoming = LINKS.filter((l) => l.to === id);
-    const outgoing = LINKS.filter((l) => l.from === id);
-    const getLbl = (nid) => { const n = getNodeById(nid); return n ? n.label : nid; };
-    const groupMates = node.groupId
-      ? (NODES || []).filter((n) => n.groupId === node.groupId && n.id !== node.id)
-      : [];
     body = (
       <>
         {node.sublabel ? <div className="pop__sub">{node.sublabel}</div> : null}
         <p className="pop__desc">{node.description}</p>
-        {groupMates.length ? (
-          <section className="pop__section">
-            <h3 className="pop__h3">Fusionné avec</h3>
-            <div className="pop__chips">
-              {groupMates.map((n) => (
-                <button key={n.id} className="pop__group-mate" onClick={(e) => { e.stopPropagation(); onSelectNode(n.id); }}>
-                  {n.label || n.id}
-                </button>
-              ))}
-            </div>
-          </section>
-        ) : null}
         {node.responsabilites?.length ? (
           <section className="pop__section">
             <h3 className="pop__h3">Responsabilités</h3>
