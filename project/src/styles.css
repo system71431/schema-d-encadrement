@@ -585,6 +585,44 @@ button { font: inherit; color: inherit; cursor: pointer; }
   max-height: calc(100vh - 32px);
   overflow-y: auto;
   box-shadow: var(--shadow-hard);
+  /* Masque la scrollbar native, on rend la nôtre via .pop__scrollbar.
+     iOS Safari respecte ::-webkit-scrollbar avec width:0 ; Firefox/Chrome
+     respecte scrollbar-width: none. */
+  scrollbar-width: none;
+}
+.pop::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Indicateur de scroll personnalisé (barre verte à droite). Position
+   absolue dans .pop ; sa `top` est mise à jour en JS pour suivre le
+   scrollTop, ce qui la fait paraître figée visuellement même si elle
+   bouge dans le contenu scrollable. Visible uniquement quand le contenu
+   déborde (classe is-visible posée par le useEffect dans Popup.jsx). */
+.pop__scrollbar {
+  position: absolute;
+  right: 6px;
+  width: 4px;
+  background: rgba(33, 32, 29, 0.10);
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.pop__scrollbar.is-visible { opacity: 1; }
+.pop__scrollbar-thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  border: 1px solid var(--ink);
+  box-sizing: border-box;
+  transition: transform 0.08s linear, height 0.1s linear;
+}
+@media (max-width: 600px) {
+  .pop__scrollbar { width: 5px; right: 5px; }
+  .pop__scrollbar-thumb { background: var(--green); }
 }
 /* Mode "wide" : déclenché quand un rôle a beaucoup de tâches.
    Popup centré, large, multi-colonnes pour que tout tienne sans scroll.

@@ -1,6 +1,57 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
+  const popRef = useRef(null);
+  const trackRef = useRef(null);
+  const thumbRef = useRef(null);
+
+  // Indicateur de scroll : barre verte sur le bord droit du popup, visible
+  // uniquement quand le contenu déborde. Plus fiable que la scrollbar native
+  // iOS qui s'auto-cache pendant le défilement tactile.
+  useEffect(() => {
+    const el = popRef.current;
+    const track = trackRef.current;
+    const thumb = thumbRef.current;
+    if (!el || !track || !thumb) return;
+    let raf = 0;
+    const compute = () => {
+      raf = 0;
+      const total = el.scrollHeight;
+      const view = el.clientHeight;
+      if (total <= view + 2) {
+        track.classList.remove("is-visible");
+        return;
+      }
+      track.classList.add("is-visible");
+      const trackTop = el.scrollTop + 8;
+      const trackHeight = Math.max(40, view - 16);
+      const thumbH = Math.max(24, (view / total) * trackHeight);
+      const maxScroll = total - view;
+      const scrollPct = maxScroll > 0 ? el.scrollTop / maxScroll : 0;
+      const thumbTop = scrollPct * (trackHeight - thumbH);
+      track.style.top = `${trackTop}px`;
+      track.style.height = `${trackHeight}px`;
+      thumb.style.height = `${thumbH}px`;
+      thumb.style.transform = `translateY(${thumbTop}px)`;
+    };
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(compute);
+    };
+    compute();
+    el.addEventListener("scroll", schedule, { passive: true });
+    const ro = new ResizeObserver(schedule);
+    ro.observe(el);
+    const mo = new MutationObserver(schedule);
+    mo.observe(el, { subtree: true, childList: true, characterData: true });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", schedule);
+      ro.disconnect();
+      mo.disconnect();
+    };
+  }, [payload]);
+
   if (!payload) return null;
   const { x, y, kind, id } = payload;
   const NODES = nodes || [];
@@ -240,7 +291,10 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
           masqué via CSS — le popup flottant reste discret au-dessus du
           schéma sans assombrir tout l'écran. */}
       <div className="pop-backdrop" onClick={onClose} aria-hidden="true" />
-      <div className={popClass} style={popStyle} onClick={(e) => e.stopPropagation()}>
+      <div ref={popRef} className={popClass} style={popStyle} onClick={(e) => e.stopPropagation()}>
+      <div ref={trackRef} className="pop__scrollbar" aria-hidden="true">
+        <div ref={thumbRef} className="pop__scrollbar-thumb" />
+      </div>
       <div className="pop__head">
         <div className={"pop__eyebrow" + (_isNamed ? " pop__eyebrow--name" : "")}>{eyebrow}</div>
         <button className="pop__close" onClick={onClose} aria-label="Fermer">
