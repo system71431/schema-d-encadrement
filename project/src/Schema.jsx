@@ -79,19 +79,70 @@ function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
   }
 }
 
+// Hash FNV-1a 32 bits → entier non-signé. Utilisé comme seed déterministe
+// pour les variations visuelles (tilt des nœuds, jitter des liens) :
+// même id ⇒ même rendu, indépendant de l'ordre du DOM ou du moment du
+// rendu. Crucial pour que le « hand-drawn » reste stable.
+function hashStr(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+// PRNG mulberry32 — minuscule, déterministe, distribution correcte sur
+// [0,1). On l'utilise pour générer plusieurs valeurs jittered à partir
+// d'une même seed (le générateur est stateful, chaque appel avance).
+function seededRand(seed) {
+  let s = (seed >>> 0) || 1;
+  return function () {
+    s = (s + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // Tilt stable par id : hash FNV-1a → réel dans [-1,1] → multiplié par
 // l'amplitude propre au type. Indépendant de l'ordre du DOM, donc tout
 // ajout/suppression/réordonnancement de nœud laisse les autres tilts
 // intacts (l'ancien CSS `nth-of-type` les faisait tous bouger).
 function tiltForId(id, kind) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < id.length; i++) {
-    h ^= id.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  const norm = ((h >>> 0) / 0xffffffff) * 2 - 1; // [-1, 1]
+  const norm = (hashStr(id) / 0xffffffff) * 2 - 1; // [-1, 1]
   const ranges = { role: 1.4, group: 1.1, resource: 1.4, shape: 2.0 };
   return (norm * (ranges[kind] || 1.0)).toFixed(2) + "deg";
+}
+
+// Path SVG « tracé à main levée » : quadratique d'origine convertie en
+// 2 segments quadratiques se rejoignant au point t=0.5, chaque control
+// point + le midpoint de raccord ayant un jitter déterministe seedé
+// par l'id du lien. L'amplitude du jitter (en % du canvas 100×100)
+// scale légèrement avec la longueur du lien — un trait court reste
+// précis, un trait long « tremble » davantage. Ne dépasse jamais ~0.6%
+// pour rester de l'ordre de la vibration de la main, pas du gribouillis.
+function shakyPath(a, b, cx, cy, seed) {
+  const rand = seededRand(seed);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const amp = Math.min(0.55, len * 0.02);
+  // Midpoint à t=0.5 sur la quadratique smooth, légèrement décalé.
+  const m = {
+    x: 0.25 * a.x + 0.5 * cx + 0.25 * b.x + (rand() - 0.5) * amp,
+    y: 0.25 * a.y + 0.5 * cy + 0.25 * b.y + (rand() - 0.5) * amp,
+  };
+  // Control points des deux sous-segments — ancrés à mi-chemin entre
+  // l'extrémité et le control central, avec leur propre jitter.
+  const c1 = {
+    x: a.x + (cx - a.x) * 0.5 + (rand() - 0.5) * amp,
+    y: a.y + (cy - a.y) * 0.5 + (rand() - 0.5) * amp,
+  };
+  const c2 = {
+    x: b.x + (cx - b.x) * 0.5 + (rand() - 0.5) * amp,
+    y: b.y + (cy - b.y) * 0.5 + (rand() - 0.5) * amp,
+  };
+  return `M ${a.x} ${a.y} Q ${c1.x} ${c1.y} ${m.x} ${m.y} Q ${c2.x} ${c2.y} ${b.x} ${b.y}`;
 }
 
 function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSource, hasTasks, onClick, onHover, onLeave, onDragStart, registerSize }) {
@@ -134,6 +185,14 @@ function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSourc
   // gardent leur valeur CSS d'origine, plus discrète).
   if (node.kind !== "container") {
     style["--tilt"] = tiltForId(node.id || "", node.kind);
+  }
+  // Stagger d'apparition : delay déterministe (0 à ~280ms) basé sur le
+  // hash de l'id. L'animation elle-même est définie côté CSS sur .node
+  // — uniquement opacity pour ne pas entrer en conflit avec le transform
+  // (centrage + tilt + hover). Pseudo-aléatoire pour que la séquence
+  // semble organique plutôt qu'en balayage gauche-droite.
+  if (node.id) {
+    style["--enter-delay"] = (hashStr(node.id) % 35) * 8 + "ms";
   }
 
   const handleMouseDown = editMode ? (e) => onDragStart(node.id, e) : undefined;
@@ -202,7 +261,9 @@ function SchemaLink({ link, nodes, sizes, selected, dimmed, highlighted, onClick
   const curve = link.curve ?? 0;
   const cx = mx + nx * curve;
   const cy = my + ny * curve;
-  const d = `M ${a.x} ${a.y} Q ${cx} ${cy} ${b.x} ${b.y}`;
+  // Tracé crayonné déterministe (seed = hash de l'id) — donne du caractère
+  // au schéma sans casser la stabilité visuelle d'un re-render à l'autre.
+  const d = shakyPath(a, b, cx, cy, hashStr(link.id || `${a.x},${a.y},${b.x},${b.y}`));
   const cls = ["link", `link--${link.kind}`,
     selected && "is-selected", dimmed && "is-dimmed", highlighted && "is-highlighted"
   ].filter(Boolean).join(" ");
@@ -260,7 +321,12 @@ function Arrowhead({ x, y, angle, kind, dimmed, highlighted }) {
       height="12"
       viewBox="0 0 14 12"
     >
-      <path d="M 0 0 L 16 6 L 0 12 z" fill={color} />
+      {/* Triangle volontairement asymétrique (point inférieur à 11.6 au lieu
+          de 12, base supérieure à 0.3 au lieu de 0) : effet « gouache pas
+          tout à fait sèche », assorti à la légère arrondie crayonnée des
+          liens. La pointe reste à 16 pour déborder de 2 unités au-delà du
+          viewBox et protéger le sub-pixel résiduel du trait. */}
+      <path d="M 0 0.3 L 16 6 L 0.6 11.6 z" fill={color} strokeLinejoin="round" />
     </svg>
   );
 }

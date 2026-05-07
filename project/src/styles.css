@@ -1,7 +1,10 @@
 /* ====== Tokens — papier / gouache ====== */
 :root {
   --paper-1: #fcf9f1;
-  --paper-2: #fcf9f1;
+  /* Surface secondaire (toolbar, popup, filtres actifs, chips) — un cran
+     plus chaud que paper-1 pour créer une vraie hiérarchie sans dépendre
+     uniquement des bordures. */
+  --paper-2: #f5ecd6;
   /* Encre légèrement adoucie : moins dur qu'un noir pur, donne un rendu
      plus illustratif/cartoonesque sans sacrifier la lisibilité. */
   --ink: #2c2a25;
@@ -13,6 +16,10 @@
   --blue: #4f8fd6;
   --yellow: #f5c443;
   --pink: #f2b6b6;
+  /* Tons désaturés en complément : pour les accents secondaires (états
+     hover atténués, marquages discrets) sans saturation visuelle. */
+  --sage: #a8b89a;
+  --rose-poudre: #d8aaa3;
 
   --line: rgba(33, 32, 29, 0.9);
 
@@ -20,8 +27,12 @@
   --font-hand: "Kalam", "Caveat", cursive;
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-hard: 6px 6px 0 var(--ink);
-  --shadow-hard-sm: 3px 3px 0 var(--ink);
+  /* Ombres : 0.5px de blur quasi-imperceptible adoucit les bords
+     pixelisés sur écrans haute densité tout en gardant l'esprit
+     « tampon ». */
+  --shadow-hard: 6px 6px 0.5px var(--ink);
+  --shadow-hard-sm: 3px 3px 0.5px var(--ink);
+  --shadow-hard-lg: 9px 9px 1px var(--ink);
   --border-thick: 2.5px;
   --border-thin: 2px;
 }
@@ -46,8 +57,16 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
-  /* Fond uni clair (texture pointillée retirée pour un rendu plus net). */
+  /* Fond crème + grain papier inline (turbulence SVG, opacity ~4%). Le
+     SVG est encodé en url() pour éviter un asset séparé qui casserait
+     le mode single-file. La fréquence (0.92) et le contraste (matrice
+     0.04) sont calibrés pour évoquer une trame très fine sans bruit
+     visible à distance de lecture. */
   background-color: var(--paper-1);
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='280' height='280'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.16  0 0 0 0 0.14  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 280px 280px;
+  background-attachment: fixed;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 
@@ -216,6 +235,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .node.is-dimmed { opacity: 0.32; }
 .node.is-highlighted { z-index: 4; }
+/* Apparition séquentielle au montage : seul opacity bouge pour ne pas
+   entrer en conflit avec le transform (centrage + tilt + hover). Le
+   delay est injecté inline (--enter-delay) à partir d'un hash de l'id,
+   ce qui produit un staggering organique stable. */
+@keyframes node-enter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.node {
+  animation: node-enter 0.45s ease-out both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .node { animation: none; }
+}
 
 /* Conteneur — gros encadré pointillé incliné */
 .node--container {
@@ -257,12 +291,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 /* Tilt désormais injecté inline via Schema.jsx (tiltForId). */
 .node--role:hover, .node--role.is-highlighted {
-  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
-  box-shadow: 8px 8px 0 var(--ink);
+  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-3px);
+  /* Hover plus marqué : ombre plus profonde + flou minuscule pour
+     vraiment matérialiser le décollage du papier. */
+  box-shadow: var(--shadow-hard-lg);
 }
 .node--role.is-selected {
   background: var(--yellow);
-  box-shadow: 8px 8px 0 var(--ink);
+  box-shadow: var(--shadow-hard-lg);
+  /* Trait crayonné rouge en outline pour signaler la sélection sans
+     écraser la couleur de fond — plus doux que l'ancien aplat rouge. */
+  outline: 2.5px solid var(--red);
+  outline-offset: 3px;
 }
 
 /* Organe collectif — bloc papier (style "étiquette") */
@@ -281,12 +321,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Tilt désormais inline (tiltForId dans Schema.jsx). Les ombres restent
    neutres (--ink) — les couleurs d'accent sont réservées aux liens. */
 .node--group:hover, .node--group.is-highlighted {
-  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
-  box-shadow: 8px 8px 0 var(--ink);
+  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-3px);
+  box-shadow: var(--shadow-hard-lg);
 }
 .node--group.is-selected {
-  background: var(--red);
-  box-shadow: 8px 8px 0 var(--ink);
+  /* Wash rouge plus doux + outline crayonné : moins agressif que l'ancien
+     aplat plein rouge qui écrasait le label. */
+  background: var(--rose-poudre);
+  box-shadow: var(--shadow-hard-lg);
+  outline: 2.5px solid var(--red);
+  outline-offset: 3px;
 }
 
 /* Ressource externe — petit rectangle bordé */
@@ -304,12 +348,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Tilt inline (tiltForId). Le fallback de couleur sur background suit. */
 .node--resource { background: var(--node-color, var(--paper-2)); }
 .node--resource:hover, .node--resource.is-highlighted {
-  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
-  box-shadow: 8px 8px 0 var(--ink);
+  transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-3px);
+  box-shadow: var(--shadow-hard);
 }
 .node--resource.is-selected {
   background: var(--yellow);
-  box-shadow: 8px 8px 0 var(--ink);
+  box-shadow: var(--shadow-hard);
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
 }
 
 /* Hover : animation "papier épinglé qui se décolle". Rotation + soulèvement
@@ -337,16 +383,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
   line-height: 1.1;
   text-align: center;
 }
+/* Rôles individuels : variante plus stylisée (Caveat, taille bumpée) pour
+   accentuer le côté manuscrit annoté. Les groupes / ressources restent en
+   Kalam — meilleure lisibilité quand le label fait 2 lignes. */
+.node--role .node__label {
+  font-family: var(--font-hand-big);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 0.95;
+}
 .node--group .node__label { font-size: 19px; }
 .node__sublabel {
   font-family: var(--font-sans);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  color: var(--ink-3);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
   text-transform: uppercase;
   white-space: pre-line;
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
+  margin-top: 2px;
 }
 .node--group .node__sublabel { color: var(--ink-3); }
 
@@ -457,19 +513,41 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ====== Légende ====== */
 /* Légende posée sur le même plan que le schéma : pas de fond, pas de bordure,
    pas d'ombre — juste du texte qui flotte sur le papier. */
+/* Cartouche : la légende est traitée comme une étiquette papier épinglée
+   au schéma — fond paper-2 plus chaud, bordure encre épaisse, ombre
+   tampon, et une légère inclinaison pour casser la grille. Le titre
+   « Légende » (généré en ::before) déborde au-dessus en Caveat. */
 .legend {
   position: absolute;
   left: 32px;
   bottom: 24px;
   display: flex;
-  gap: 24px;
+  gap: 18px 28px;
   flex-wrap: wrap;
-  padding: 6px 0;
+  padding: 14px 18px 12px;
   z-index: 5;
   max-width: calc(100% - 240px);
-  background: transparent;
-  border: 0;
-  box-shadow: none;
+  background: var(--paper-2);
+  border: var(--border-thick) solid var(--ink);
+  border-radius: 14px;
+  box-shadow: var(--shadow-hard-sm);
+  transform: rotate(-0.6deg);
+}
+.legend::before {
+  content: "Légende";
+  position: absolute;
+  top: -22px;
+  left: 14px;
+  font-family: var(--font-hand-big);
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--paper-1);
+  padding: 0 10px;
+  transform: rotate(-3deg);
+  border: var(--border-thin) solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 var(--ink);
 }
 .legend__item {
   display: flex; align-items: center; gap: 12px;
@@ -949,25 +1027,38 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* Pastille SHA du build : injectée par vite.config.js. Permet de vérifier
    en un coup d'œil quelle version est en train de tourner (utile sur la
    GitHub Page une fois déployée). */
+/* Style « tampon administratif délavé » : le SHA est marqué comme un
+   cachet rouge légèrement passé, légèrement penché, comme apposé après
+   coup. Couleur var(--red) en faible opacité par défaut, plein rouge
+   au hover. La typo monospace garde l'identifiant lisible. */
 .toolbar__version {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--red);
   text-decoration: none;
-  padding: 3px 8px;
-  border: 1px dashed var(--ink-3);
-  border-radius: 999px;
+  padding: 4px 10px 3px;
+  border: 1.5px solid currentColor;
+  border-radius: 4px;
   opacity: 0.55;
-  transition: opacity 0.12s, background 0.12s, color 0.12s;
+  transform: rotate(-7deg);
+  transition: opacity 0.15s, transform 0.15s, color 0.15s;
   white-space: nowrap;
   align-self: center;
+  position: relative;
+}
+.toolbar__version::before {
+  content: "v.";
+  margin-right: 1px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .toolbar__version:hover {
   opacity: 1;
-  background: var(--ink);
-  color: var(--paper-1);
-  border-color: var(--ink);
+  transform: rotate(-3deg) scale(1.04);
 }
 
 @media (max-width: 1000px) {
