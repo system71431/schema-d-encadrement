@@ -167,8 +167,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* ====== Schema ====== */
 /* `bottom: 80px` réserve une bande basse pour la légende et le hint, qui
    sont en `position: absolute` (overlay) et chevauchaient sinon les nœuds
-   placés tout en bas du canvas. En mode `is-expanded` (légende et hint
-   masqués), on reprend toute la place. */
+   placés tout en bas du canvas. */
 .schema {
   position: absolute;
   top: 100px;
@@ -991,30 +990,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   transform: rotate(1deg) translateY(-2px);
   box-shadow: var(--shadow-hard);
 }
-.toolbar__expand {
-  background: var(--paper-1);
-  border: var(--border-thick) solid var(--ink);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--ink);
-  display: grid;
-  place-items: center;
-  box-shadow: var(--shadow-hard-sm);
-  transform: rotate(-1deg);
-  transition: all 0.12s;
-  flex-shrink: 0;
-  padding: 0;
-  line-height: 1;
-}
-.toolbar__expand:hover {
-  background: var(--blue);
-  color: var(--paper-1);
-}
-.app-fs.is-expanded .toolbar__expand { background: var(--blue); color: var(--paper-1); }
-
 /* Pastille SHA du build : injectée par vite.config.js. Permet de vérifier
    en un coup d'œil quelle version est en train de tourner (utile sur la
    GitHub Page une fois déployée). */
@@ -1085,7 +1060,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar__filters { padding: 3px; gap: 4px; transform: rotate(-0.4deg); }
   .toolbar__filters button { font-size: 12px; padding: 3px 8px; }
   .toolbar__edit { display: none; }
-  .toolbar__expand { width: 30px; height: 30px; font-size: 15px; }
   .brand-logo { display: none; }
 
   /* Sur portrait téléphone, la toolbar wrap sur 2 lignes (titre + filtres)
@@ -1212,7 +1186,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar__title { font-size: 18px; flex: 0 0 auto; }
   .toolbar__filters button { font-size: 10px; padding: 2px 5px; }
   .toolbar__edit { display: none; }
-  .toolbar__expand { display: none; }
   .brand-logo { display: none; }
 
   .schema { top: 76px; left: 4px; right: 4px; bottom: 4px; }
@@ -1238,15 +1211,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .toolbar__title em { display: none; }
 }
 
-/* ====== Mode "vue agrandie" : la zone du schéma s'étire, les éléments décoratifs se font discrets. ====== */
-.app-fs.is-expanded .toolbar__title em { display: none; }
-.app-fs.is-expanded .toolbar__title { font-size: 36px; line-height: 1; }
-.app-fs.is-expanded .toolbar { top: 12px; }
-.app-fs.is-expanded .schema { top: 76px; bottom: 16px; left: 16px; right: 16px; }
-.app-fs.is-expanded.is-edit-mode .schema { right: calc(340px + 24px); }
-.app-fs.is-expanded .legend { display: none; }
-.app-fs.is-expanded .hint { display: none; }
-.app-fs.is-expanded .doodle { opacity: 0.25; }
 
 .schema.is-edit-mode {
   background-image:

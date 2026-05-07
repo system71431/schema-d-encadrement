@@ -309,7 +309,6 @@ function App() {
   const [editMode, setEditMode] = useState(false);
   const [editing, setEditing] = useState(null);
   const [linkDrawing, setLinkDrawing] = useState(null);
-  const [expanded, setExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Historique undo/redo. On ne sauvegarde que `{nodes, links}`. La sélection
@@ -753,7 +752,7 @@ function App() {
 
 
   return (
-    <div className={"app-fs" + (editMode ? " is-edit-mode" : "") + (expanded ? " is-expanded" : "")}>
+    <div className={"app-fs" + (editMode ? " is-edit-mode" : "")}>
       <header className="toolbar">
         <h1 className="toolbar__title">
           <span className="toolbar__title-mark">{header.title}</span>
@@ -764,13 +763,6 @@ function App() {
           <button role="tab" aria-selected={filter === "encadrement"} className={filter === "encadrement" ? "is-active" : ""} onClick={() => setFilter("encadrement")}>Encadrement</button>
           <button role="tab" aria-selected={filter === "collaboration"} className={filter === "collaboration" ? "is-active" : ""} onClick={() => setFilter("collaboration")}>Collaboration</button>
         </div>
-        <button className="toolbar__expand"
-          onClick={() => setExpanded((v) => !v)}
-          aria-pressed={expanded}
-          aria-label={expanded ? "Réduire la vue" : "Agrandir la vue (cacher légende et conseils)"}
-          title={expanded ? "Réduire la vue" : "Agrandir la vue"}>
-          {expanded ? "⊟" : "⊞"}
-        </button>
         {!editMode && !VIEWER_ONLY ? (
           <button className="toolbar__edit" onClick={enterEdit} title="Activer le mode édition">✎ Éditer</button>
         ) : null}
