@@ -208,6 +208,10 @@ function Arrowhead({ x, y, angle, kind, dimmed, highlighted }) {
     : "var(--ink)";
   // Le triangle déborde de 2 unités au-delà du viewBox (overflow: visible) pour
   // que la pointe protège tout sub-pixel résiduel du trait.
+  // width/height explicites (en plus du CSS) : iOS Safari ignore parfois la
+  // taille CSS d'un <svg> sans width/height intrinsèques quand un ancêtre
+  // porte une transform — l'élément retombait alors sur 300×150 (taille SVG
+  // par défaut), d'où des flèches « explosées » sur la version partagée mobile.
   return (
     <svg
       className={"arrow-marker arrow-marker--" + kind + (dimmed ? " is-dim" : "")}
@@ -216,6 +220,8 @@ function Arrowhead({ x, y, angle, kind, dimmed, highlighted }) {
         top: `${y}%`,
         transform: `translate(-100%, -50%) rotate(${angle}deg)`,
       }}
+      width="14"
+      height="12"
       viewBox="0 0 14 12"
     >
       <path d="M 0 0 L 16 6 L 0 12 z" fill={color} />
