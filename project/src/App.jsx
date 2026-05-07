@@ -57,8 +57,11 @@ function makeShareFilename(rawName) {
 // qu'une création (sinon GitHub renvoie 422).
 async function uploadHtmlToGitHub(token, filename, html) {
   const path = SHARE_PATH_PREFIX + filename;
-  await uploadFileToGitHub(token, path, html, `Partage du schéma : ${filename}`);
-  return SHARE_BASE_URL + filename;
+  const sha = await uploadFileToGitHub(token, path, html, `Partage du schéma : ${filename}`);
+  // Cache-bust : on suffixe l'URL avec le SHA du commit qui vient d'être créé,
+  // pour que le lien partagé pointe toujours sur la dernière version (sinon
+  // GitHub Pages / le navigateur peuvent servir une copie cachée).
+  return sha ? `${SHARE_BASE_URL}${filename}?v=${sha}` : SHARE_BASE_URL + filename;
 }
 
 // Push générique d'un fichier texte (UTF-8) vers le repo. Mutualise la
@@ -103,7 +106,8 @@ async function uploadFileToGitHub(token, path, text, commitMessage) {
     }
     throw new Error(`Erreur GitHub ${res.status} : ${errBody.message || "échec inconnu"}`);
   }
-  return true;
+  const body = await res.json().catch(() => ({}));
+  return (body && body.commit && body.commit.sha) || null;
 }
 
 // Sérialise les données courantes vers le format attendu par data.js.
