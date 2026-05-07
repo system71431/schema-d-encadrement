@@ -715,4 +715,4 @@ export const HEADER = {
   "subtitle": "dans la canton, qui encadre qui ?"
 };
 
-export const DATA_VERSION = "2026-05-07T06:28:19.858Z";
+export const DATA_VERSION = "2026-05-07T06:42:38.579Z";
