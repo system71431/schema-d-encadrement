@@ -71,7 +71,11 @@ async function uploadFileToGitHub(token, path, text, commitMessage) {
   };
   let existingSha = null;
   try {
-    const probe = await fetch(`${apiUrl}?ref=${SHARE_BRANCH}`, { headers });
+    // `cache: "no-store"` est crucial : sans ça, le navigateur peut servir
+    // un 404 caché d'un précédent appel (quand le fichier n'existait pas
+    // encore), ce qui fait qu'on n'envoie pas de `sha` au PUT et GitHub
+    // renvoie 409 « does not match » parce que le fichier existe en réalité.
+    const probe = await fetch(`${apiUrl}?ref=${SHARE_BRANCH}`, { headers, cache: "no-store" });
     if (probe.ok) {
       const data = await probe.json();
       existingSha = data && data.sha ? data.sha : null;
