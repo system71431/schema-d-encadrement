@@ -1,3 +1,4 @@
+// @ts-check
 // Historique undo/redo : pile à deux côtés, plafonnée à `limit` entrées.
 // On ne sauvegarde que `{nodes, links}` — la sélection et l'état
 // d'édition ne sont pas dans l'historique (volontaire : un undo ne doit
@@ -7,6 +8,20 @@ import { useState, useCallback } from "react";
 
 const DEFAULT_LIMIT = 50;
 
+/**
+ * @template T
+ * @typedef {(value: T) => void} Setter
+ */
+/** @typedef {import("../types").SchemaNode} SchemaNode */
+/** @typedef {import("../types").SchemaLink} SchemaLink */
+
+/**
+ * @param {SchemaNode[]} nodes
+ * @param {SchemaLink[]} links
+ * @param {Setter<SchemaNode[]>} setNodes
+ * @param {Setter<SchemaLink[]>} setLinks
+ * @param {number} [limit]
+ */
 export function useHistory(nodes, links, setNodes, setLinks, limit = DEFAULT_LIMIT) {
   const [history, setHistory] = useState({ undo: [], redo: [] });
 

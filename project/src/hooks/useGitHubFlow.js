@@ -1,3 +1,4 @@
+// @ts-check
 // Hook qui orchestre les flux GitHub déclenchés depuis l'éditeur :
 // - obtenir / mémoriser / oublier le token (via promptDialog)
 // - partager (push HTML autonome → GitHub Pages)

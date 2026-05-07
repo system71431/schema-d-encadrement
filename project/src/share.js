@@ -1,3 +1,4 @@
+// @ts-check
 // Helpers pour le flux de partage GitHub (Pages) :
 // - constantes du repo cible
 // - encodage UTF-8 → base64 robuste sur gros payload
@@ -173,8 +174,13 @@ export const VIEWER_ONLY = !!(INITIAL_FROM_TAG && INITIAL_FROM_TAG.mode === "vie
 // vite-plugin-singlefile), donc on clone le DOM courant et on remplace le
 // contenu de <script id="schema-data"> par l'instantané sérialisé. La page
 // générée se charge en mode viewer (data-mode="viewer" → édition désactivée).
+/**
+ * @param {import("./types").SchemaNode[]} viewNodes
+ * @param {import("./types").SchemaLink[]} viewLinks
+ * @param {import("./types").SchemaHeader} viewHeader
+ */
 export function buildViewerHTML(viewNodes, viewLinks, viewHeader) {
-  const doc = document.documentElement.cloneNode(true);
+  const doc = /** @type {Element} */ (document.documentElement.cloneNode(true));
   const dataEl = doc.querySelector("#schema-data");
   if (!dataEl) {
     throw new Error("Bloc <script id=\"schema-data\"> introuvable dans la page courante.");

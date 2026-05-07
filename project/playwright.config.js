@@ -38,8 +38,11 @@ export default defineConfig({
     launchOptions,
   },
   projects: [
-    { name: "small-375",  use: { ...baseChromium, viewport: { width: 375, height: 667 } } },
-    { name: "medium-393", use: { ...baseChromium, viewport: { width: 393, height: 851 } } },
+    { name: "small-375",  use: { ...baseChromium, viewport: { width: 375, height: 667 } }, testIgnore: /editor\.spec\.js/ },
+    { name: "medium-393", use: { ...baseChromium, viewport: { width: 393, height: 851 } }, testIgnore: /editor\.spec\.js/ },
+    // Desktop : pour les flux d'édition (le bouton « Éditer » est masqué
+    // par CSS sous 600px). Tests dédiés dans `tests/editor.spec.js`.
+    { name: "desktop", use: { ...baseChromium, viewport: { width: 1280, height: 800 }, hasTouch: false }, testMatch: /editor\.spec\.js/ },
   ],
   webServer: {
     command: "npm run preview -- --host 127.0.0.1 --port 4173",

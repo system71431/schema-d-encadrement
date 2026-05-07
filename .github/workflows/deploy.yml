@@ -30,6 +30,8 @@ jobs:
           cache: npm
           cache-dependency-path: project/package-lock.json
       - run: npm ci
+      - name: Type check (JSDoc + types.d.ts)
+        run: npm run typecheck
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build

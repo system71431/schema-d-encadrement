@@ -321,6 +321,7 @@ function App() {
     onShareViewer,
     onPublishOfficial,
     onGenerateViewer,
+    onForgetToken,
     shareBusy,
     publishBusy,
   } = useGitHubFlow({ nodes, links, header, draftKey: DRAFT_KEY });
@@ -434,6 +435,7 @@ function App() {
         shareBusy={shareBusy}
         onPublishOfficial={onPublishOfficial}
         publishBusy={publishBusy}
+        onForgetToken={onForgetToken}
         onUndo={undo}
         onRedo={redo}
         canUndo={canUndo}

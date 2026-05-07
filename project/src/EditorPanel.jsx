@@ -531,6 +531,7 @@ function EditorPanel(props) {
     onGenerateViewer,
     onShareViewer, shareBusy,
     onPublishOfficial, publishBusy,
+    onForgetToken,
     onUndo, onRedo, canUndo, canRedo,
     onExportPNG,
     header, onHeaderChange,
@@ -653,6 +654,12 @@ function EditorPanel(props) {
           title="Remplace data.js sur GitHub : tous les visiteurs et appareils auront cette version après ~2 min">
           {publishBusy ? "Publication…" : "Publier la version officielle"}
         </button>
+        {onForgetToken ? (
+          <button type="button" className="editor-forget-token" onClick={onForgetToken}
+            title="Efface le Personal Access Token GitHub mémorisé sur cet appareil. Utile sur un appareil partagé ou après une rotation de token.">
+            Oublier le token GitHub
+          </button>
+        ) : null}
         <button type="button" className="editor-reset" onClick={onResetDraft} title="Annule toutes les modifications non exportées">Réinitialiser</button>
       </div>
     </aside>

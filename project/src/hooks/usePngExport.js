@@ -1,3 +1,4 @@
+// @ts-check
 // Export PNG : capture `.schema__viewport` (parent du `.schema__design`
 // transformé) — html2canvas gère mal les CSS transforms, donc on capture
 // le viewport déjà rasterisé à la taille écran.
@@ -11,7 +12,7 @@ import { toast } from "../feedback.jsx";
 
 export function usePngExport() {
   return useCallback(async () => {
-    const target = document.querySelector(".schema__viewport");
+    const target = /** @type {HTMLElement | null} */ (document.querySelector(".schema__viewport"));
     if (!target) { toast.error("Schéma introuvable."); return; }
     try {
       const html2canvas = (await import("html2canvas")).default;

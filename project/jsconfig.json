@@ -1,0 +1,21 @@
+{
+  "//": "Active la vérification de types JS via JSDoc + types.d.ts. Pas de compilation : ce fichier ne sert qu'à l'IDE et à `npx tsc --noEmit` en CI si on veut un check de typage. checkJs lit toutes les annotations /** @param ... */, et types.d.ts fournit les interfaces partagées (SchemaNode, SchemaLink, etc.).",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "allowJs": true,
+    "checkJs": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests", "scripts"]
+}
