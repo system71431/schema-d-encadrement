@@ -24,12 +24,24 @@ const PUBLIC_SHARED = path.join(PROJECT, "public", "shared");
 const DIST_SHARED = path.join(PROJECT, "dist", "shared");
 const DIST_INDEX = path.join(PROJECT, "dist", "index.html");
 
-// Capture le bloc `<script id="schema-data" type="application/json" ...>` ouvrant +
-// son contenu + sa fermeture. On exige `type="application/json"` parce que la
-// chaîne `<script id="schema-data">` apparaît aussi dans le bundle JS (dans
-// un message d'erreur littéral) — sans cette contrainte la regex matchait
-// d'abord là, ce qui sabotait la régénération.
-const SCHEMA_DATA_RE = /<script\s+id="schema-data"\s+type="application\/json"[^>]*>([\s\S]*?)<\/script>/;
+// On cherche un `<script ...>...</script>` dont les attributs contiennent
+// À LA FOIS `id="schema-data"` et `type="application/json"`, dans n'importe
+// quel ordre. La double exigence évite de matcher le littéral
+// `<script id="schema-data">` qui apparaît aussi dans le bundle JS (message
+// d'erreur). L'indépendance d'ordre survit à un éventuel réordonnancement
+// par Vite ou à un changement manuel de `index.html`.
+const SCRIPT_TAG_RE = /<script\b([^>]*)>([\s\S]*?)<\/script>/g;
+function findSchemaDataBlock(html) {
+  SCRIPT_TAG_RE.lastIndex = 0;
+  let m;
+  while ((m = SCRIPT_TAG_RE.exec(html)) !== null) {
+    const attrs = m[1];
+    const hasId = /\bid\s*=\s*["']schema-data["']/.test(attrs);
+    const hasJson = /\btype\s*=\s*["']application\/json["']/.test(attrs);
+    if (hasId && hasJson) return { start: m.index, end: m.index + m[0].length, body: m[2] };
+  }
+  return null;
+}
 
 async function main() {
   if (!existsSync(DIST_INDEX)) {
@@ -47,25 +59,27 @@ async function main() {
     return;
   }
   await mkdir(DIST_SHARED, { recursive: true });
+  const templateBlock = findSchemaDataBlock(freshTemplate);
+  if (!templateBlock) {
+    console.error("[rebuild-shared] Bloc schema-data introuvable dans dist/index.html — abandon.");
+    process.exit(1);
+  }
   for (const filename of entries) {
     const oldPath = path.join(PUBLIC_SHARED, filename);
     const oldHtml = await readFile(oldPath, "utf8");
-    const m = oldHtml.match(SCHEMA_DATA_RE);
-    if (!m) {
+    const oldBlock = findSchemaDataBlock(oldHtml);
+    if (!oldBlock) {
       console.warn(`[rebuild-shared] ${filename} : bloc schema-data introuvable, skip.`);
       continue;
     }
-    const data = m[1];
-    // Remplace dans le bundle frais le bloc schema-data + force viewer.
-    const rebuilt = freshTemplate.replace(
-      SCHEMA_DATA_RE,
-      () =>
-        `<script id="schema-data" type="application/json" data-mode="viewer">${data}</script>`
-    );
-    if (rebuilt === freshTemplate) {
-      console.warn(`[rebuild-shared] ${filename} : le template ne contient pas de bloc schema-data à remplacer.`);
-      continue;
-    }
+    // Remplace par splice de chaîne (plus robuste qu'un .replace avec une
+    // regex appliquée sur freshTemplate, qui pourrait introduire des
+    // ambiguïtés si plusieurs candidats existent).
+    const newTag = `<script id="schema-data" type="application/json" data-mode="viewer">${oldBlock.body}</script>`;
+    const rebuilt =
+      freshTemplate.slice(0, templateBlock.start) +
+      newTag +
+      freshTemplate.slice(templateBlock.end);
     const outPath = path.join(DIST_SHARED, filename);
     await writeFile(outPath, rebuilt);
     console.log(`[rebuild-shared] ${filename} régénéré (${rebuilt.length} octets).`);

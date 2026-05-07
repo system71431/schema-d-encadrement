@@ -55,20 +55,27 @@ function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
     vectorEffect: "non-scaling-stroke",
     ...(dashArray ? { strokeDasharray: dashArray } : {}),
   };
+  // width/height="100%" en attributs (en plus du CSS) : même précaution que
+  // pour Arrowhead — iOS Safari peut ignorer la taille CSS d'un <svg> sans
+  // dimensions intrinsèques quand un ancêtre porte une CSS transform, et
+  // retomber sur la taille SVG par défaut (300×150). Les nodes shape sont
+  // dans .schema__design (transform: scale) ET .node--shape (transform:
+  // translate+rotate) — combinaison sensible.
+  const sized = { width: "100%", height: "100%", viewBox: "0 0 100 100", preserveAspectRatio: "none" };
   switch (shape) {
     case "square":
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="6" y="6" width="88" height="88" {...common}/></svg>);
+      return (<svg {...sized}><rect x="6" y="6" width="88" height="88" {...common}/></svg>);
     case "triangle":
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,8 92,88 8,88" {...common}/></svg>);
+      return (<svg {...sized}><polygon points="50,8 92,88 8,88" {...common}/></svg>);
     case "diamond":
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,6 94,50 50,94 6,50" {...common}/></svg>);
+      return (<svg {...sized}><polygon points="50,6 94,50 50,94 6,50" {...common}/></svg>);
     case "hexagon":
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="25,8 75,8 96,50 75,92 25,92 4,50" {...common}/></svg>);
+      return (<svg {...sized}><polygon points="25,8 75,8 96,50 75,92 25,92 4,50" {...common}/></svg>);
     case "star":
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,5 62,38 96,38 68,58 79,92 50,72 21,92 32,58 4,38 38,38" {...common}/></svg>);
+      return (<svg {...sized}><polygon points="50,5 62,38 96,38 68,58 79,92 50,72 21,92 32,58 4,38 38,38" {...common}/></svg>);
     case "circle":
     default:
-      return (<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="44" {...common}/></svg>);
+      return (<svg {...sized}><circle cx="50" cy="50" r="44" {...common}/></svg>);
   }
 }
 

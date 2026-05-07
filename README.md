@@ -1,22 +1,40 @@
-# CODING AGENTS: READ THIS FIRST
+# Schéma d'encadrement — Groupe scout
 
-This is a **handoff bundle** from Claude Design (claude.ai/design).
+Application web pour visualiser et éditer le schéma d'encadrement d'un groupe
+scout (qui supervise qui, qui collabore avec qui, qui fait quelles tâches).
+Déployée automatiquement sur GitHub Pages depuis `main`.
 
-A user mocked up designs in HTML/CSS/JS using an AI design tool, then exported this bundle so a coding agent can implement the designs for real.
+- **App** : <https://system71431.github.io/schema-d-encadrement/>
+- **Sources** : `project/`
 
-## What you should do — IMPORTANT
+## Développement
 
-**Read `visualisation-sch-ma-d-encadrement/project/Schema d'encadrement (standalone-src).html` in full.** The user had this file open when they triggered the handoff, so it's almost certainly the primary design they want built. Read it top to bottom — don't skim. Then **follow its imports**: open every file it pulls in (shared components, CSS, scripts) so you understand how the pieces fit together before you start implementing.
+```bash
+cd project
+npm install
+npm run dev      # HMR, http://localhost:5173
+npm run build    # bundle single-file → dist/index.html (+ régen dist/shared/*.html)
+npm run preview  # sert dist/ pour vérifier le bundle
+npm test         # tests Playwright (mobile)
+```
 
-**If anything is ambiguous, ask the user to confirm before you start implementing.** It's much cheaper to clarify scope up front than to build the wrong thing.
+Le build produit un `dist/index.html` autonome (CSS + JS inlinés via
+`vite-plugin-singlefile`), et régénère chaque `dist/shared/*.html` pour qu'il
+contienne le bundle frais tout en préservant les données du schéma partagé.
 
-## About the design files
+## Partage public
 
-The design medium is **HTML/CSS/JS** — these are prototypes, not production code. Your job is to **recreate them pixel-perfectly** in whatever technology makes sense for the target codebase (React, Vue, native, whatever fits). Match the visual output; don't copy the prototype's internal structure unless it happens to fit.
+Le bouton « Partager » dans l'app pousse un HTML autonome (mode viewer) sur ce
+repo via l'API GitHub Contents, dans `project/public/shared/<nom>.html`. Après
+le redéploiement Pages (~2 min), la page est accessible publiquement à
+`https://system71431.github.io/schema-d-encadrement/shared/<nom>.html?v=<sha>`.
+Le suffixe `?v=<sha>` du commit créé sert de cache-bust pour que le lien pointe
+toujours sur la version qui vient d'être publiée.
 
-**Don't render these files in a browser or take screenshots unless the user asks you to.** Everything you need — dimensions, colors, layout rules — is spelled out in the source. Read the HTML and CSS directly; a screenshot won't tell you anything they don't.
+L'opération nécessite un Personal Access Token GitHub (scope `repo`) entré une
+fois par appareil et stocké en `localStorage`.
 
-## Bundle contents
+## CI
 
-- `visualisation-sch-ma-d-encadrement/README.md` — this file
-- `visualisation-sch-ma-d-encadrement/project/` — the `Visualisation schéma d'encadrement` project files (HTML prototypes, assets, components)
+`.github/workflows/deploy.yml` exécute build + tests Playwright sur chaque push
+sur `main`, puis déploie `project/dist/` sur GitHub Pages.
