@@ -299,10 +299,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .node--role.is-selected {
   background: var(--yellow);
   box-shadow: var(--shadow-hard-lg);
-  /* Trait crayonné rouge en outline pour signaler la sélection sans
-     écraser la couleur de fond — plus doux que l'ancien aplat rouge. */
-  outline: 2.5px solid var(--red);
-  outline-offset: 3px;
 }
 
 /* Organe collectif — bloc papier (style "étiquette") */
@@ -325,12 +321,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   box-shadow: var(--shadow-hard-lg);
 }
 .node--group.is-selected {
-  /* Wash rouge plus doux + outline crayonné : moins agressif que l'ancien
-     aplat plein rouge qui écrasait le label. */
+  /* Wash rose-poudre : signal doux sans écraser le label, sans cerne. */
   background: var(--rose-poudre);
   box-shadow: var(--shadow-hard-lg);
-  outline: 2.5px solid var(--red);
-  outline-offset: 3px;
 }
 
 /* Ressource externe — petit rectangle bordé */
@@ -354,8 +347,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .node--resource.is-selected {
   background: var(--yellow);
   box-shadow: var(--shadow-hard);
-  outline: 2px solid var(--red);
-  outline-offset: 2px;
 }
 
 /* Hover : animation "papier épinglé qui se décolle". Rotation + soulèvement
