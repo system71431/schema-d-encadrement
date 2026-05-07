@@ -151,6 +151,16 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
             }
             if (hasShared) break;
           }
+          const groupArr = Array.from(groups.values());
+          const jumpToGroup = (gIdx) => {
+            const el = document.getElementById(`pop-task-group-${gIdx}`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+          };
+          // Affiche la jump-nav uniquement quand ça aide vraiment : à partir de
+          // 3 groupes, ou si le total de tâches dépasse 12. En dessous, la liste
+          // tient à l'écran et la nav serait du bruit.
+          const totalTasks = groupArr.reduce((acc, g) => acc + g.tasks.length, 0);
+          const showJumpNav = groupArr.length >= 3 || totalTasks > 12;
           return (
             <section className="pop__section">
               <h3 className="pop__h3">Tâches</h3>
@@ -162,15 +172,29 @@ function Popup({ payload, nodes, links, onClose, onSelectNode, onSelectLink }) {
                   </span>
                 </div>
               ) : null}
+              {showJumpNav ? (
+                <nav className="pop__jumpnav" aria-label="Aller à un groupe de tâches">
+                  {groupArr.map((g, gIdx) => {
+                    const other = getNodeById(g.target);
+                    const label = other ? (other.label || g.target) : g.target;
+                    return (
+                      <button key={gIdx} type="button" className="pop__jumpnav-btn"
+                        onClick={() => jumpToGroup(gIdx)}>
+                        {g.direction} {label} · {g.tasks.length}
+                      </button>
+                    );
+                  })}
+                </nav>
+              ) : null}
               {/* Une seule liste multi-colonnes : les sous-titres "envers X"
                   occupent toute la largeur (column-span: all) et coupent les
                   colonnes ; les tâches qui suivent reprennent en flow. */}
               <ul className="pop__tasks-list pop__tasks-list--unified">
-                {Array.from(groups.values()).map((group, gIdx) => {
+                {groupArr.map((group, gIdx) => {
                   const other = getNodeById(group.target);
                   return (
                     <React.Fragment key={gIdx}>
-                      <li className="pop__tasks-subtitle">
+                      <li id={`pop-task-group-${gIdx}`} className="pop__tasks-subtitle">
                         <span>{group.direction}</span>
                         <button className="pop__inline-link"
                           onClick={(e) => { e.stopPropagation(); onSelectNode(group.target); }}>

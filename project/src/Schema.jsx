@@ -79,6 +79,21 @@ function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
   }
 }
 
+// Tilt stable par id : hash FNV-1a → réel dans [-1,1] → multiplié par
+// l'amplitude propre au type. Indépendant de l'ordre du DOM, donc tout
+// ajout/suppression/réordonnancement de nœud laisse les autres tilts
+// intacts (l'ancien CSS `nth-of-type` les faisait tous bouger).
+function tiltForId(id, kind) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  const norm = ((h >>> 0) / 0xffffffff) * 2 - 1; // [-1, 1]
+  const ranges = { role: 1.4, group: 1.1, resource: 1.4, shape: 2.0 };
+  return (norm * (ranges[kind] || 1.0)).toFixed(2) + "deg";
+}
+
 function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSource, hasTasks, onClick, onHover, onLeave, onDragStart, registerSize }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -112,6 +127,14 @@ function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSourc
   if (node.strokeWidth != null && node.strokeWidth !== "") {
     style["--stroke-width"] = `${node.strokeWidth}px`;
   }
+  // Tilt déterministe dérivé de l'id : remplace l'ancienne logique CSS
+  // `nth-of-type(2n)` qui dépendait de l'ordre du DOM (donc instable au
+  // moindre changement de tri ou d'ajout/suppression). Hash FNV-1a → [-1,1]
+  // → range adapté au type. Les containers ne reçoivent pas de tilt (ils
+  // gardent leur valeur CSS d'origine, plus discrète).
+  if (node.kind !== "container") {
+    style["--tilt"] = tiltForId(node.id || "", node.kind);
+  }
 
   const handleMouseDown = editMode ? (e) => onDragStart(node.id, e) : undefined;
   const handleClick = (e) => { e.stopPropagation(); onClick(node, e); };
@@ -143,6 +166,12 @@ function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSourc
       onClick={handleClick}
       onMouseEnter={() => onHover(node)}
       onMouseLeave={onLeave}>
+      {/* Tooltip permanent quand sélectionné hors mode édition : utile quand
+          le label est tronqué visuellement (rôles à nom long, multi-ligne).
+          Affiche le label complet sur une ligne au-dessus du nœud. */}
+      {selected && !editMode && node.label ? (
+        <span className="node__tooltip" role="tooltip">{node.label.replace(/\s+/g, " ").trim()}</span>
+      ) : null}
       <span className="node__label">{node.label}</span>
       {node.sublabel ? <span className="node__sublabel">{node.sublabel}</span> : null}
       {hasTasks && !editMode ? (
@@ -294,7 +323,11 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
     }
   }, [focused, links, nodes]);
 
-  const visibleLinks = links.filter((l) => filter === "all" ? true : l.kind === filter);
+  // On rend TOUS les liens en permanence — le filtre est désormais purement
+  // visuel (classe is-filter-X sur .schema, opacité gérée par CSS), ce qui
+  // permet une transition d'opacité au changement de filtre. Les liens
+  // filtrés deviennent inertes via `pointer-events: none`.
+  const visibleLinks = links;
 
   // Set des nœuds (role/group/resource) qui ont au moins une tâche associée,
   // soit définie directement sur le nœud (node.tasks[].towards), soit via un
@@ -584,7 +617,7 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
     : null;
 
   return (
-    <div ref={schemaRef} className={"schema" + (editMode ? " is-edit-mode" : "") + (linkDrawing ? " is-link-drawing" : "") + (isZoomed ? " is-zoomed" : "")}
+    <div ref={schemaRef} className={"schema is-filter-" + filter + (editMode ? " is-edit-mode" : "") + (linkDrawing ? " is-link-drawing" : "") + (isZoomed ? " is-zoomed" : "")}
       onClick={(e) => {
         // Après un pan/pinch, le navigateur émet un click — on l'ignore
         // pour ne pas refermer le popup ou perdre la sélection.

@@ -255,7 +255,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   z-index: 2;
   --tilt: -1.2deg;
 }
-.node--role:nth-of-type(2n) { --tilt: 1.4deg; }
+/* Tilt désormais injecté inline via Schema.jsx (tiltForId). */
 .node--role:hover, .node--role.is-highlighted {
   transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
   box-shadow: 8px 8px 0 var(--ink);
@@ -278,10 +278,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   z-index: 2;
   --tilt: -0.8deg;
 }
-/* Variation décorative du tilt selon position (cycle subtil pour éviter
-   l'uniformité). Les ombres restent neutres (--ink) — les couleurs d'accent
-   sont réservées aux liens d'encadrement / collaboration. */
-.node--group:nth-of-type(2n) { --tilt: 1deg; }
+/* Tilt désormais inline (tiltForId dans Schema.jsx). Les ombres restent
+   neutres (--ink) — les couleurs d'accent sont réservées aux liens. */
 .node--group:hover, .node--group.is-highlighted {
   transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
   box-shadow: 8px 8px 0 var(--ink);
@@ -303,8 +301,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   z-index: 2;
   --tilt: 1.2deg;
 }
-.node--resource:nth-of-type(2n) { --tilt: -1.4deg; background: var(--node-color, var(--paper-2)); }
-.node--resource:nth-of-type(3n) { --tilt: 0.8deg; }
+/* Tilt inline (tiltForId). Le fallback de couleur sur background suit. */
+.node--resource { background: var(--node-color, var(--paper-2)); }
 .node--resource:hover, .node--resource.is-highlighted {
   transform: translate(-50%, -50%) rotate(var(--tilt)) translateY(-2px);
   box-shadow: 8px 8px 0 var(--ink);
@@ -1801,9 +1799,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   transform: translate(-50%, -50%) rotate(var(--tilt));
 }
 .node--shape.is-editable { pointer-events: auto; }
-.node--shape:nth-of-type(2n) { --tilt: 1.4deg; }
-.node--shape:nth-of-type(3n) { --tilt: -0.4deg; }
-.node--shape:nth-of-type(5n) { --tilt: 2deg; }
+/* Tilt inline (tiltForId). */
 .node--shape svg {
   display: block;
   width: 100%;
@@ -2070,3 +2066,268 @@ button { font: inherit; color: inherit; cursor: pointer; }
   position: absolute;
   inset: 0;
 }
+
+/* ====== Feedback : toasts + dialogs ====== */
+.toast-host {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(420px, calc(100vw - 32px));
+}
+.toast {
+  pointer-events: auto;
+  background: var(--paper-1);
+  border: var(--border-thick) solid var(--ink);
+  border-radius: 14px;
+  box-shadow: var(--shadow-hard-sm);
+  padding: 10px 12px 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.35;
+  animation: toast-in 0.18s ease-out;
+}
+@keyframes toast-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.toast--success { border-left-width: 8px; border-left-color: var(--green); }
+.toast--error   { border-left-width: 8px; border-left-color: var(--red); }
+.toast--info    { border-left-width: 8px; border-left-color: var(--blue); }
+.toast__msg { flex: 1; white-space: pre-wrap; word-break: break-word; }
+.toast__close {
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.toast__close:hover { color: var(--ink); }
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(33, 32, 29, 0.42);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: dialog-fade 0.16s ease-out;
+}
+@keyframes dialog-fade { from { opacity: 0; } to { opacity: 1; } }
+.dialog {
+  background: var(--paper-1);
+  border: var(--border-thick) solid var(--ink);
+  border-radius: 18px;
+  box-shadow: var(--shadow-hard);
+  padding: 22px 22px 18px;
+  max-width: 460px;
+  width: 100%;
+  font-family: var(--font-sans);
+  animation: dialog-in 0.18s ease-out;
+}
+@keyframes dialog-in {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.dialog__title {
+  margin: 0 0 8px;
+  font-family: var(--font-hand-big);
+  font-size: 28px;
+  color: var(--ink);
+}
+.dialog__message {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--ink-2);
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.dialog__form { display: flex; flex-direction: column; gap: 12px; }
+.dialog__field { display: flex; flex-direction: column; gap: 4px; }
+.dialog__field-label { font-size: 13px; color: var(--ink-2); font-weight: 600; }
+.dialog__field-hint { font-size: 12px; color: var(--ink-3); }
+.dialog__field input {
+  font: inherit;
+  font-size: 15px;
+  padding: 8px 10px;
+  border: var(--border-thin) solid var(--ink);
+  border-radius: 10px;
+  background: var(--paper-1);
+  color: var(--ink);
+}
+.dialog__field input:focus { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.dialog__copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 14px;
+  background: var(--paper-2);
+  border: var(--border-thin) solid var(--ink-3);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.dialog__copy-value {
+  flex: 1;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ink);
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.dialog__copy-btn {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: var(--border-thin) solid var(--ink);
+  border-radius: 8px;
+  background: var(--paper-1);
+  cursor: pointer;
+}
+.dialog__copy-btn:hover { background: var(--yellow); }
+.dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.dialog__btn {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: var(--border-thin) solid var(--ink);
+  background: var(--paper-1);
+  color: var(--ink);
+  cursor: pointer;
+}
+.dialog__btn--ghost { background: transparent; border-color: var(--ink-3); color: var(--ink-2); }
+.dialog__btn--ghost:hover { color: var(--ink); border-color: var(--ink); }
+.dialog__btn--primary { background: var(--yellow); font-weight: 600; }
+.dialog__btn--primary:hover { background: var(--ink); color: var(--yellow); }
+.dialog__btn--danger { background: var(--red); color: var(--paper-1); border-color: var(--ink); font-weight: 600; }
+.dialog__btn--danger:hover { background: var(--ink); color: var(--red); }
+
+/* ====== Onboarding hint (mobile) ====== */
+.onboard-hint {
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  background: var(--ink);
+  color: var(--paper-1);
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: var(--shadow-hard-sm);
+  animation: hint-in 0.3s ease-out, hint-out 0.4s ease-in 6s forwards;
+  pointer-events: none;
+}
+@keyframes hint-in {
+  from { transform: translate(-50%, 16px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
+}
+@keyframes hint-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translate(-50%, 8px); }
+}
+.onboard-hint__icon { font-size: 16px; }
+
+/* ====== Tooltip de nœud sélectionné ====== */
+.node__tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--paper-1);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: var(--shadow-hard-sm);
+}
+.node__tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--ink);
+}
+
+/* ====== Focus visible (clavier) ====== */
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
+.node:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 4px;
+}
+
+/* ====== Transition liens (filtre + dim) ====== */
+.link__line, .link__hit { transition: opacity 0.18s ease, stroke 0.18s ease; }
+/* La règle de transition existe déjà sur .arrow-marker (cf. plus haut). */
+.schema.is-filter-encadrement .link--collaboration .link__line,
+.schema.is-filter-encadrement .arrow-marker--collaboration,
+.schema.is-filter-encadrement .link--collaboration .link-label,
+.schema.is-filter-collaboration .link--encadrement .link__line,
+.schema.is-filter-collaboration .arrow-marker--encadrement,
+.schema.is-filter-collaboration .link--encadrement .link-label {
+  opacity: 0;
+}
+.schema.is-filter-encadrement .link--collaboration,
+.schema.is-filter-collaboration .link--encadrement {
+  pointer-events: none;
+}
+
+/* ====== Jump-nav popup tâches ====== */
+.pop__jumpnav {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, var(--paper-1) 78%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 0 10px;
+  margin: 0 0 8px;
+  border-bottom: 1px dashed var(--ink-3);
+}
+.pop__jumpnav-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper-1);
+  color: var(--ink);
+  cursor: pointer;
+}
+.pop__jumpnav-btn:hover { background: var(--yellow); }
+.pop__jumpnav-btn:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }

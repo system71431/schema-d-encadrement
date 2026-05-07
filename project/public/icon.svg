@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Icône PWA : papier crème, encre noire, jaune scout. Représente trois
+       nœuds connectés (l'idée de schéma) avec une légère inclinaison
+       artisanale fidèle à l'esthétique papier de l'app. -->
+  <rect width="512" height="512" rx="96" fill="#fcf9f1"/>
+  <g stroke="#2c2a25" stroke-width="14" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="256" y1="158" x2="166" y2="346"/>
+    <line x1="256" y1="158" x2="346" y2="346"/>
+    <line x1="166" y1="346" x2="346" y2="346"/>
+  </g>
+  <g stroke="#2c2a25" stroke-width="10">
+    <circle cx="256" cy="158" r="58" fill="#f5c443"/>
+    <circle cx="166" cy="346" r="58" fill="#3eb371"/>
+    <circle cx="346" cy="346" r="58" fill="#e54b3f"/>
+  </g>
+</svg>

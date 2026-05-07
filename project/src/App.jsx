@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import html2canvas from "html2canvas";
 import Schema from "./Schema.jsx";
 import Popup from "./Popup.jsx";
 import EditorPanel from "./EditorPanel.jsx";
@@ -10,7 +9,12 @@ import {
   DATA_VERSION,
 } from "./data.js";
 import logoUrl from "./logo-scoutisme-neuchatelois.png";
+import { FeedbackHost, toast, confirmDialog, promptDialog, infoDialog } from "./feedback.jsx";
 import "./styles.css";
+
+// html2canvas est importé dynamiquement uniquement à l'export PNG (cf.
+// onExportPNG) pour ne pas peser dans le bundle initial — il représente
+// ~30% du JS et n'est pas utilisé sur la version partagée.
 
 // Cible des partages : fichier HTML poussé via l'API GitHub Contents.
 // Le repo est servi par GitHub Pages, donc tout fichier dans
@@ -554,7 +558,7 @@ function App() {
     try {
       const data = JSON.parse(text);
       if (!data || !Array.isArray(data.nodes) || !Array.isArray(data.links)) {
-        alert("Format invalide. Le fichier doit contenir { nodes: [...], links: [...] }");
+        toast.error("Format invalide. Le fichier doit contenir { nodes: [...], links: [...] }");
         return;
       }
       pushHistory();
@@ -564,12 +568,19 @@ function App() {
       setEditing(null);
       setLinkDrawing(null);
     } catch (e) {
-      alert("Erreur de lecture du fichier JSON : " + e.message);
+      toast.error("Erreur de lecture du fichier JSON : " + e.message);
     }
   };
 
-  const onResetDraft = () => {
-    if (!confirm("Annuler toutes les modifications et revenir aux données d'origine ?")) return;
+  const onResetDraft = async () => {
+    const ok = await confirmDialog({
+      title: "Tout effacer ?",
+      message: "Annule toutes les modifications et revient aux données d'origine. Cette action ne peut pas être annulée.",
+      confirmLabel: "Tout effacer",
+      cancelLabel: "Garder mes modifs",
+      variant: "danger",
+    });
+    if (!ok) return;
     pushHistory();
     setNodes(JSON.parse(JSON.stringify(seed.nodes)));
     setLinks(JSON.parse(JSON.stringify(seed.links)));
@@ -577,6 +588,7 @@ function App() {
     setEditing(null);
     setLinkDrawing(null);
     try { localStorage.removeItem(DRAFT_KEY); } catch (_) {}
+    toast.info("Modifications annulées.");
   };
 
   const onGenerateViewer = () => {
@@ -591,8 +603,9 @@ function App() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toast.success("HTML autonome téléchargé.");
     } catch (e) {
-      alert("Erreur lors de la génération du HTML : " + e.message);
+      toast.error("Erreur lors de la génération du HTML : " + e.message);
     }
   };
 
@@ -605,23 +618,26 @@ function App() {
   const [publishBusy, setPublishBusy] = useState(false);
   const onPublishOfficial = useCallback(async () => {
     if (publishBusy) return;
-    const ok = window.confirm(
-      "Publier comme version officielle ?\n\n" +
-      "Cela remplace project/src/data.js sur GitHub. Tous les visiteurs " +
-      "(et tous tes appareils) recevront cette version après le re-deploy " +
-      "(~2 min). Les brouillons d'édition non publiés sur les autres " +
-      "navigateurs seront purgés."
-    );
+    const ok = await confirmDialog({
+      title: "Publier la version officielle ?",
+      message:
+        "Cela remplace project/src/data.js sur GitHub. Tous les visiteurs (et tous tes appareils) recevront cette version après le re-deploy (~2 min). Les brouillons d'édition non publiés sur les autres navigateurs seront purgés.",
+      confirmLabel: "Publier",
+      cancelLabel: "Annuler",
+      variant: "danger",
+    });
     if (!ok) return;
     let token;
     try { token = localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (_) { token = ""; }
     if (!token) {
-      const entered = window.prompt(
-        "Pour publier sur GitHub, colle ton Personal Access Token (scope « repo »).\n" +
-        "Tu peux en générer un sur : https://github.com/settings/tokens"
-      );
-      if (!entered) return;
-      token = entered.trim();
+      const r = await promptDialog({
+        title: "Token GitHub requis",
+        message: "Colle ton Personal Access Token (scope « repo »). Génère-le sur https://github.com/settings/tokens.",
+        fields: [{ name: "token", label: "Token", type: "password", autoComplete: "off", hint: "Mémorisé localement, jamais transmis ailleurs qu'à api.github.com." }],
+        submitLabel: "Continuer",
+      });
+      if (!r || !r.values.token) return;
+      token = r.values.token.trim();
       try { localStorage.setItem(GH_TOKEN_KEY, token); } catch (_) {}
     }
     setPublishBusy(true);
@@ -644,14 +660,9 @@ function App() {
           dataVersion: newVersion,
         }));
       } catch (_) {}
-      alert(
-        "Version publiée sur GitHub.\n\n" +
-        "Le re-deploy démarre maintenant (~2 min). " +
-        "Une fois terminé, recharge la page sur tes autres appareils — " +
-        "ils auront la même version que celle-ci."
-      );
+      toast.success("Publié sur GitHub. Re-deploy en cours (~2 min).");
     } catch (e) {
-      alert("Échec de la publication : " + (e && e.message ? e.message : String(e)));
+      toast.error("Échec de la publication : " + (e && e.message ? e.message : String(e)));
     } finally {
       setPublishBusy(false);
     }
@@ -667,34 +678,41 @@ function App() {
     let token;
     try { token = localStorage.getItem(GH_TOKEN_KEY) || ""; } catch (_) { token = ""; }
     if (!token) {
-      const entered = window.prompt(
-        "Pour publier sur GitHub, colle ton Personal Access Token (scope « repo »).\n" +
-        "Tu peux en générer un sur : https://github.com/settings/tokens\n\n" +
-        "Le token sera mémorisé localement sur cet appareil — tu ne le ressaisiras plus."
-      );
-      if (!entered) return;
-      token = entered.trim();
+      const r = await promptDialog({
+        title: "Token GitHub requis",
+        message: "Pour publier, colle ton Personal Access Token (scope « repo »). Génère-le sur https://github.com/settings/tokens.",
+        fields: [{ name: "token", label: "Token", type: "password", autoComplete: "off", hint: "Mémorisé localement sur cet appareil — tu ne le ressaisiras plus." }],
+        submitLabel: "Continuer",
+      });
+      if (!r || !r.values.token) return;
+      token = r.values.token.trim();
       try { localStorage.setItem(GH_TOKEN_KEY, token); } catch (_) {}
     }
     const defaultName = (header && header.title) ? header.title : "schema";
-    const wantedName = window.prompt(
-      "Nom de ta page partagée (laisse vide pour un nom auto avec date) :",
-      defaultName
-    );
-    if (wantedName === null) return;
-    const filename = makeShareFilename(wantedName);
+    const r2 = await promptDialog({
+      title: "Partager le schéma",
+      message: "Choisis un nom pour la page partagée. Laisse vide pour un nom auto avec date.",
+      fields: [{ name: "name", label: "Nom de page", defaultValue: defaultName, placeholder: "ex. asn-2026" }],
+      submitLabel: "Publier",
+    });
+    if (!r2) return;
+    const filename = makeShareFilename(r2.values.name);
     setShareBusy(true);
     try {
       const html = buildViewerHTML(nodes, links, header);
       const url = await uploadHtmlToGitHub(token, filename, html);
-      try { await navigator.clipboard.writeText(url); } catch (_) {}
-      alert(
-        "Schéma poussé sur GitHub.\n\n" +
-        "URL (copiée dans le presse-papiers) :\n" + url + "\n\n" +
-        "La page sera disponible publiquement dès que le déploiement automatique sera terminé (~2 min)."
-      );
+      let copied = false;
+      try { await navigator.clipboard.writeText(url); copied = true; } catch (_) {}
+      await infoDialog({
+        title: "Schéma partagé",
+        message: copied
+          ? "URL copiée dans le presse-papiers. La page sera publique après le déploiement (~2 min)."
+          : "Voici l'URL publique. La page sera disponible après le déploiement (~2 min).",
+        copyValue: url,
+        okLabel: "Fermer",
+      });
     } catch (e) {
-      alert("Échec du partage : " + (e && e.message ? e.message : String(e)));
+      toast.error("Échec du partage : " + (e && e.message ? e.message : String(e)));
     } finally {
       setShareBusy(false);
     }
@@ -703,10 +721,13 @@ function App() {
   // Export PNG : on capture `.schema__viewport` (parent du `.schema__design`
   // transformé) parce que html2canvas gère mal les transformations CSS.
   // Le viewport contient déjà tout ce qui est rendu, à la résolution écran.
+  // Import dynamique : html2canvas pèse ~150KB gzippés, on ne le charge que
+  // si l'utilisateur clique sur Export.
   const onExportPNG = async () => {
     const target = document.querySelector(".schema__viewport");
-    if (!target) { alert("Schéma introuvable."); return; }
+    if (!target) { toast.error("Schéma introuvable."); return; }
     try {
+      const html2canvas = (await import("html2canvas")).default;
       const canvas = await html2canvas(target, {
         backgroundColor: getComputedStyle(document.body).getPropertyValue("background-color") || "#fbf6ea",
         scale: 2,
@@ -714,7 +735,7 @@ function App() {
         logging: false,
       });
       canvas.toBlob((blob) => {
-        if (!blob) { alert("Échec de génération du PNG."); return; }
+        if (!blob) { toast.error("Échec de génération du PNG."); return; }
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -723,9 +744,10 @@ function App() {
         a.click();
         a.remove();
         URL.revokeObjectURL(url);
+        toast.success("PNG téléchargé.");
       }, "image/png");
     } catch (e) {
-      alert("Erreur export PNG : " + e.message);
+      toast.error("Erreur export PNG : " + e.message);
     }
   };
 
@@ -737,15 +759,17 @@ function App() {
           <span className="toolbar__title-mark">{header.title}</span>
           {header.subtitle ? <em>{header.subtitle}</em> : null}
         </h1>
-        <div className="toolbar__filters" role="tablist">
-          <button className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>Tout</button>
-          <button className={filter === "encadrement" ? "is-active" : ""} onClick={() => setFilter("encadrement")}>Encadrement</button>
-          <button className={filter === "collaboration" ? "is-active" : ""} onClick={() => setFilter("collaboration")}>Collaboration</button>
+        <div className="toolbar__filters" role="tablist" aria-label="Filtrer les liens">
+          <button role="tab" aria-selected={filter === "all"} className={filter === "all" ? "is-active" : ""} onClick={() => setFilter("all")}>Tout</button>
+          <button role="tab" aria-selected={filter === "encadrement"} className={filter === "encadrement" ? "is-active" : ""} onClick={() => setFilter("encadrement")}>Encadrement</button>
+          <button role="tab" aria-selected={filter === "collaboration"} className={filter === "collaboration" ? "is-active" : ""} onClick={() => setFilter("collaboration")}>Collaboration</button>
         </div>
         <button className="toolbar__expand"
           onClick={() => setExpanded((v) => !v)}
-          title={expanded ? "Vue normale" : "Vue agrandie (cacher légende et conseils)"}>
-          ⤢
+          aria-pressed={expanded}
+          aria-label={expanded ? "Réduire la vue" : "Agrandir la vue (cacher légende et conseils)"}
+          title={expanded ? "Réduire la vue" : "Agrandir la vue"}>
+          {expanded ? "⊟" : "⊞"}
         </button>
         {!editMode && !VIEWER_ONLY ? (
           <button className="toolbar__edit" onClick={enterEdit} title="Activer le mode édition">✎ Éditer</button>
@@ -850,6 +874,37 @@ function App() {
         header={header}
         onHeaderChange={(next) => { pushHistory(); setHeader(next); }}
       />
+      <OnboardingHint editMode={editMode} />
+      <FeedbackHost />
+    </div>
+  );
+}
+
+// Hint discret au premier lancement mobile : informe que pinch+pan fonctionnent.
+// On ne le montre qu'une seule fois par appareil (localStorage), uniquement
+// hors mode édition (le panneau d'édition rend le hint redondant), et seulement
+// si l'écran est étroit (le pan/pinch n'a pas d'intérêt sur desktop).
+const HINT_KEY = "schema-encadrement-pinch-hint-seen";
+function OnboardingHint({ editMode }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (editMode) return;
+    let seen = false;
+    try { seen = !!localStorage.getItem(HINT_KEY); } catch (_) {}
+    if (seen) return;
+    if (window.matchMedia && !window.matchMedia("(max-width: 720px)").matches) return;
+    const t = setTimeout(() => setShow(true), 600);
+    const t2 = setTimeout(() => {
+      setShow(false);
+      try { localStorage.setItem(HINT_KEY, "1"); } catch (_) {}
+    }, 7400);
+    return () => { clearTimeout(t); clearTimeout(t2); };
+  }, [editMode]);
+  if (!show) return null;
+  return (
+    <div className="onboard-hint" role="note">
+      <span className="onboard-hint__icon" aria-hidden="true">✌︎</span>
+      <span>Pince pour zoomer · glisse pour panner</span>
     </div>
   );
 }
