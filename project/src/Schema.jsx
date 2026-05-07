@@ -31,32 +31,6 @@ function linkPoint(node, sizes, anchor, towards) {
   return anchorOnNode(node, towards, sizes);
 }
 
-// Distance constante (en % du canvas 100×100) entre la pointe d'une flèche
-// et le bord du nœud cible. Égalise visuellement tous les liens, quel que
-// soit l'anchor stocké : qu'un toAnchor soit dedans, sur le bord ou en
-// dehors du nœud, la flèche atterrit toujours au même offset uniforme.
-const ARROW_GAP = 0.7;
-
-// Projette `towards` sur un rectangle virtuel de taille (size + 2*gap)
-// centré sur le nœud. Le résultat est sur ce rectangle, dans la direction
-// de l'autre extrémité du lien — donc la pointe atterrit à `gap` au-delà
-// du bord visible. La direction utilise la position de `towards` (centre
-// du nœud source ou point de contrôle de la courbe), pas l'anchor stocké.
-function arrowEndpoint(targetNode, sizes, towards, gap) {
-  const size = sizes[targetNode.id] || { w: 14, h: 6 };
-  const cx = targetNode.x;
-  const cy = targetNode.y;
-  const dx = towards.x - cx;
-  const dy = towards.y - cy;
-  if (Math.abs(dx) < 1e-3 && Math.abs(dy) < 1e-3) return { x: cx, y: cy };
-  const hw = size.w / 2 + gap;
-  const hh = size.h / 2 + gap;
-  const tx = Math.abs(dx) < 1e-3 ? Infinity : hw / Math.abs(dx);
-  const ty = Math.abs(dy) < 1e-3 ? Infinity : hh / Math.abs(dy);
-  const t = Math.min(tx, ty);
-  return { x: cx + dx * t, y: cy + dy * t };
-}
-
 function ShapeSvg({ shape, color, strokeColor, strokeWidth, strokeStyle }) {
   const fill = color || "none";
   // Pas de contour par défaut (libre à l'utilisateur d'en mettre un via le
@@ -269,17 +243,8 @@ function SchemaLink({ link, nodes, sizes, selected, dimmed, highlighted, onClick
   const from = findById(nodes, link.from);
   const to = findById(nodes, link.to);
   if (!from || !to) return null;
-  // Extrémités calculées en deux passes :
-  // 1. positions « brutes » (avec anchor utilisateur) pour orienter la courbe
-  // 2. extrémités côté cible (et côté source pour les collaborations) re-projetées
-  //    sur un rectangle virtuel à ARROW_GAP du bord du nœud — garantit que
-  //    toutes les pointes de flèche atterrissent à la même distance visuelle.
-  const aRaw = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
-  const bRaw = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
-  const b = arrowEndpoint(to, sizes, aRaw, ARROW_GAP);
-  const a = link.kind === "collaboration"
-    ? arrowEndpoint(from, sizes, bRaw, ARROW_GAP)
-    : aRaw;
+  const a = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
+  const b = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
   const mx = (a.x + b.x) / 2;
   const my = (a.y + b.y) / 2;
   const dx = b.x - a.x;
@@ -312,14 +277,8 @@ function SchemaLinkLabel({ link, nodes, sizes, visible, editMode, onDragStart })
   const from = findById(nodes, link.from);
   const to = findById(nodes, link.to);
   if (!from || !to) return null;
-  // Mêmes extrémités que SchemaLink — sinon le label ne tombe plus sur la
-  // ligne après le re-projection à ARROW_GAP.
-  const aRaw = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
-  const bRaw = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
-  const b = arrowEndpoint(to, sizes, aRaw, ARROW_GAP);
-  const a = link.kind === "collaboration"
-    ? arrowEndpoint(from, sizes, bRaw, ARROW_GAP)
-    : aRaw;
+  const a = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
+  const b = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
   const cx = (a.x + b.x) / 2;
   const cy = (a.y + b.y) / 2;
   const ox = (link.labelOffset && link.labelOffset.x) || 0;
@@ -757,14 +716,8 @@ function Schema({ nodes, links, filter, selection, hover, setHover, onPickNode, 
           const from = findById(nodes, link.from);
           const to = findById(nodes, link.to);
           if (!from || !to) return null;
-          // Cf. SchemaLink : extrémité côté cible re-projetée à ARROW_GAP
-          // pour que toutes les flèches atterrissent à distance constante.
-          const aRaw = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
-          const bRaw = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
-          const b = arrowEndpoint(to, sizes, aRaw, ARROW_GAP);
-          const a = link.kind === "collaboration"
-            ? arrowEndpoint(from, sizes, bRaw, ARROW_GAP)
-            : aRaw;
+          const a = linkPoint(from, sizes, link.fromAnchor, { x: to.x, y: to.y });
+          const b = linkPoint(to, sizes, link.toAnchor, { x: from.x, y: from.y });
           const mx = (a.x + b.x) / 2;
           const my = (a.y + b.y) / 2;
           const dx = b.x - a.x;
