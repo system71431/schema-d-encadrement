@@ -225,12 +225,6 @@ function SchemaNode({ node, selected, dimmed, highlighted, editMode, isLinkSourc
       onClick={handleClick}
       onMouseEnter={() => onHover(node)}
       onMouseLeave={onLeave}>
-      {/* Tooltip permanent quand sélectionné hors mode édition : utile quand
-          le label est tronqué visuellement (rôles à nom long, multi-ligne).
-          Affiche le label complet sur une ligne au-dessus du nœud. */}
-      {selected && !editMode && node.label ? (
-        <span className="node__tooltip" role="tooltip">{node.label.replace(/\s+/g, " ").trim()}</span>
-      ) : null}
       <span className="node__label">{node.label}</span>
       {node.sublabel ? <span className="node__sublabel">{node.sublabel}</span> : null}
       {hasTasks && !editMode ? (

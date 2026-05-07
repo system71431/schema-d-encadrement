@@ -2340,34 +2340,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .onboard-hint__icon { font-size: 16px; }
 
-/* ====== Tooltip de nœud sélectionné ====== */
-.node__tooltip {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--ink);
-  color: var(--paper-1);
-  font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 8px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 5;
-  box-shadow: var(--shadow-hard-sm);
-}
-.node__tooltip::after {
-  content: "";
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--ink);
-}
-
 /* ====== Focus visible (clavier) ====== */
 button:focus-visible,
 a:focus-visible,
