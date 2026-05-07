@@ -57,7 +57,8 @@ function makeShareFilename(rawName) {
 // qu'une création (sinon GitHub renvoie 422).
 async function uploadHtmlToGitHub(token, filename, html) {
   const path = SHARE_PATH_PREFIX + filename;
-  return uploadFileToGitHub(token, path, html, `Partage du schéma : ${filename}`);
+  await uploadFileToGitHub(token, path, html, `Partage du schéma : ${filename}`);
+  return SHARE_BASE_URL + filename;
 }
 
 // Push générique d'un fichier texte (UTF-8) vers le repo. Mutualise la
