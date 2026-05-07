@@ -27,12 +27,12 @@
   --font-hand: "Kalam", "Caveat", cursive;
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
 
-  /* Ombres : 0.5px de blur quasi-imperceptible adoucit les bords
-     pixelisés sur écrans haute densité tout en gardant l'esprit
-     « tampon ». */
-  --shadow-hard: 6px 6px 0.5px var(--ink);
-  --shadow-hard-sm: 3px 3px 0.5px var(--ink);
-  --shadow-hard-lg: 9px 9px 1px var(--ink);
+  /* Ombres : offset pur, blur 0 — l'esthétique « tampon ». Toute trace
+     de blur, même sub-pixel, crée un halo noir visible derrière les
+     nœuds qui doublonne l'ombre offset (effet « redondance noire »). */
+  --shadow-hard: 6px 6px 0 var(--ink);
+  --shadow-hard-sm: 3px 3px 0 var(--ink);
+  --shadow-hard-lg: 8px 8px 0 var(--ink);
   --border-thick: 2.5px;
   --border-thin: 2px;
 }
